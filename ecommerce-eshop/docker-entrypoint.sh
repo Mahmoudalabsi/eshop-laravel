@@ -1,35 +1,52 @@
 #!/bin/bash
-# Docker entrypoint for ecommerce-eshop (Laravel frontend)
+# Docker entrypoint for ecommerce-eshop (Laravel frontend - storefront)
 set -e
 
-# Ensure storage directories exist and are writable
+echo "==> Preparing Laravel storage directories..."
 mkdir -p storage/framework/cache/data \
          storage/framework/sessions \
          storage/framework/views \
          storage/logs \
          bootstrap/cache
 
-# Copy .env.example if .env doesn't exist
+chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
+chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+
+echo "==> Bootstrapping .env..."
 if [ ! -f .env ]; then
-    cp .env.production.example .env 2>/dev/null || cp .env.example .env
+    if [ -f .env.production.example ]; then
+        cp .env.production.example .env
+    elif [ -f .env.example ]; then
+        cp .env.example .env
+    else
+        echo "APP_NAME=EleganceFashion" > .env
+        echo "APP_ENV=production" >> .env
+        echo "APP_DEBUG=false" >> .env
+        echo "API_BASE_URL=https://elegance-fashion-api.onrender.com/api/v1" >> .env
+    fi
 fi
 
-# Generate APP_KEY if not set
-if ! grep -q "^APP_KEY=base64:" .env 2>/dev/null; then
+if [ -n "$APP_KEY" ]; then
+    if grep -q "^APP_KEY=" .env; then
+        sed -i "s|^APP_KEY=.*|APP_KEY=$APP_KEY|" .env
+    else
+        echo "APP_KEY=$APP_KEY" >> .env
+    fi
+elif ! grep -q "^APP_KEY=base64:" .env 2>/dev/null; then
     php artisan key:generate --force
 fi
 
-# NOTE: We do NOT run migrations here. The ecommerce-shop (Backend) handles all DB migrations.
-# Run `php artisan migrate` from inside ecommerce-shop only.
-
-# Create storage symlink (for profile images etc. - though these are primarily stored by the backend)
+echo "==> Creating storage symlink..."
 php artisan storage:link 2>/dev/null || true
 
-# Cache config and routes for performance
-if [ "$APP_ENV" = "production" ]; then
-    php artisan config:cache
-    php artisan route:cache
-    php artisan view:cache
+# NOTE: Frontend doesn't run migrations - backend (elegance-fashion-api) owns the DB schema.
+# Skip config:cache when DB is not configured to avoid baking broken creds.
+if [ "$APP_ENV" = "production" ] && [ "$DB_HOST" != "CHANGE_ME_to_aiven_or_tidb_host" ] && [ -n "$DB_HOST" ]; then
+    echo "==> Caching config, routes, views..."
+    php artisan config:cache || true
+    php artisan route:cache || true
+    php artisan view:cache || true
 fi
 
+echo "==> Starting application..."
 exec "$@"

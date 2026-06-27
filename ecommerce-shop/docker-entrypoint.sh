@@ -2,35 +2,62 @@
 # Docker entrypoint for ecommerce-shop (Laravel backend)
 set -e
 
-# Ensure storage directories exist and are writable
+echo "==> Preparing Laravel storage directories..."
 mkdir -p storage/framework/cache/data \
          storage/framework/sessions \
          storage/framework/views \
          storage/logs \
          bootstrap/cache
 
-# Copy .env.example if .env doesn't exist (Render/Railway set env vars via dashboard)
+# Ensure writable (Render may run container as root or www-data)
+chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
+chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+
+echo "==> Bootstrapping .env..."
 if [ ! -f .env ]; then
-    cp .env.production.example .env 2>/dev/null || cp .env.example .env
+    if [ -f .env.production.example ]; then
+        cp .env.production.example .env
+    elif [ -f .env.example ]; then
+        cp .env.example .env
+    else
+        echo "APP_NAME=EleganceFashion" > .env
+        echo "APP_ENV=production" >> .env
+        echo "APP_DEBUG=false" >> .env
+    fi
 fi
 
-# Generate APP_KEY if not set
-if ! grep -q "^APP_KEY=base64:" .env 2>/dev/null; then
+# APP_KEY: use env var if set, otherwise generate
+if [ -n "$APP_KEY" ]; then
+    # Replace or append APP_KEY in .env (Render injects via env var, this is for safety)
+    if grep -q "^APP_KEY=" .env; then
+        sed -i "s|^APP_KEY=.*|APP_KEY=$APP_KEY|" .env
+    else
+        echo "APP_KEY=$APP_KEY" >> .env
+    fi
+elif ! grep -q "^APP_KEY=base64:" .env 2>/dev/null; then
     php artisan key:generate --force
 fi
 
-# Run migrations (safe — uses --force to skip prompt in production)
-php artisan migrate --force
-
-# Create storage symlink
+echo "==> Creating storage symlink..."
 php artisan storage:link 2>/dev/null || true
 
-# Cache config and routes for performance (only in production)
-if [ "$APP_ENV" = "production" ]; then
-    php artisan config:cache
-    php artisan route:cache
-    php artisan view:cache
+# Run migrations only if DB is configured (skip silently if not, so the container
+# can still boot and respond on /up even before the user provides real DB creds)
+if [ "$DB_HOST" != "CHANGE_ME_to_aiven_or_tidb_host" ] && [ -n "$DB_HOST" ]; then
+    echo "==> Running database migrations..."
+    php artisan migrate --force || echo "WARNING: migrations failed (continuing)"
+else
+    echo "==> Skipping migrations: DB_HOST is not configured yet (placeholder value detected)"
 fi
 
-# Execute the main command
+# Cache config/routes/views ONLY if DB is configured (otherwise config:cache
+# would bake the broken DB credentials into a single file)
+if [ "$APP_ENV" = "production" ] && [ "$DB_HOST" != "CHANGE_ME_to_aiven_or_tidb_host" ] && [ -n "$DB_HOST" ]; then
+    echo "==> Caching config, routes, views..."
+    php artisan config:cache || true
+    php artisan route:cache || true
+    php artisan view:cache || true
+fi
+
+echo "==> Starting application..."
 exec "$@"

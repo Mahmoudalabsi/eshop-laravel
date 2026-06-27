@@ -1,12 +1,28 @@
-# Multi-stage Dockerfile for Laravel 12 ecommerce-shop (Backend)
-# Optimized for Render.com / Railway / Fly.io / any container platform
+# Simplified Dockerfile for ecommerce-shop (Backend - API + Admin)
+# Uses multi-stage build: Node 20 for assets, PHP 8.2 for runtime
+# Designed for Render.com free tier
 
-FROM php:8.2-fpm-alpine AS base
+# ============ Stage 1: Build frontend assets ============
+FROM node:20-alpine AS assets
 
-# Install system dependencies
+WORKDIR /app
+
+# Copy package files first (better caching)
+COPY package.json package-lock.json* ./
+
+# Install deps and build
+RUN npm install --no-audit --no-fund --omit=dev || npm install --no-audit --no-fund
+
+# Copy the rest and build
+COPY . .
+RUN npm run build 2>&1 || echo "Build warning (non-fatal)"
+
+# ============ Stage 2: PHP runtime ============
+FROM php:8.2-fpm-alpine AS runtime
+
+# Install system deps + PHP extensions
 RUN apk add --no-cache \
     nginx \
-    sqlite-libs \
     libzip-dev \
     zip \
     unzip \
@@ -17,75 +33,44 @@ RUN apk add --no-cache \
     libxml2-dev \
     oniguruma-dev \
     mysql-client \
-    git \
-    curl \
     bash \
-    supervisor
-
-# Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install -j$(nproc) \
-        pdo_mysql \
-        mysqli \
-        zip \
-        gd \
-        mbstring \
-        exif \
-        pcntl \
-        bcmath \
-        opcache \
-        xml
-
-# Install Redis extension
-RUN pecl install redis && docker-php-ext-enable redis
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install -j$(nproc) pdo_mysql mysqli zip gd mbstring exif pcntl bcmath opcache xml
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files first for better caching
+# Composer files + install
 COPY composer.json composer.lock ./
-
-# Install PHP dependencies (no dev in production)
 RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts --no-autoloader
 
-# Copy application code
+# Copy app code
 COPY . .
+
+# Copy built assets from stage 1
+COPY --from=assets /app/public/build ./public/build
 
 # Generate optimized autoloader
 RUN composer dump-autoload --no-dev --optimize --no-interaction
 
-# Install Node.js and build frontend assets
-RUN apk add --no-cache nodejs npm \
-    && npm install --no-audit --no-fund \
-    && npm run build \
-    && apk del nodejs npm
+# Storage + bootstrap permissions
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 storage bootstrap/cache
 
-# Set permissions for Laravel
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 storage bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache
-
-# Configure PHP for production
-RUN echo "memory_limit = 256M" >> /usr/local/etc/php/conf.d/custom.ini \
+# PHP production config
+RUN echo "memory_limit = 256M" > /usr/local/etc/php/conf.d/custom.ini \
     && echo "upload_max_filesize = 64M" >> /usr/local/etc/php/conf.d/custom.ini \
     && echo "post_max_size = 64M" >> /usr/local/etc/php/conf.d/custom.ini \
-    && echo "max_execution_time = 120" >> /usr/local/etc/php/conf.d/custom.ini \
-    && echo "opcache.enable = 1" >> /usr/local/etc/php/conf.d/custom.ini \
-    && echo "opcache.memory_consumption = 256" >> /usr/local/etc/php/conf.d/custom.ini \
-    && echo "opcache.max_accelerated_files = 20000" >> /usr/local/etc/php/conf.d/custom.ini \
-    && echo "opcache.validate_timestamps = 0" >> /usr/local/etc/php/conf.d/custom.ini
+    && echo "max_execution_time = 120" >> /usr/local/etc/php/conf.d/custom.ini
 
-# Expose port (Render sets PORT env)
 EXPOSE 8000
 
-# Startup script: run migrations, cache config, start PHP server
+# Entrypoint + CMD as root so it can chown if needed; PHP-FPM runs as www-data
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint
 RUN chmod +x /usr/local/bin/docker-entrypoint
-
-USER www-data
 
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
