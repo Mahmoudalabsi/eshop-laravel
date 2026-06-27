@@ -8,10 +8,10 @@ FROM node:20-alpine AS assets
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm install --no-audit --no-fund --omit=dev || npm install --no-audit --no-fund
+RUN npm install --no-audit --no-fund
 
 COPY . .
-RUN npm run build 2>&1 || echo "Build warning (non-fatal)"
+RUN npm run build 2>&1 || echo "WARN: vite build failed, continuing"
 
 # ============ Stage 2: PHP runtime ============
 FROM php:8.2-fpm-alpine AS runtime

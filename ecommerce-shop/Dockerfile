@@ -10,12 +10,12 @@ WORKDIR /app
 # Copy package files first (better caching)
 COPY package.json package-lock.json* ./
 
-# Install deps and build
-RUN npm install --no-audit --no-fund --omit=dev || npm install --no-audit --no-fund
+# Install ALL deps (vite + laravel-vite-plugin live in devDependencies, needed for build)
+RUN npm install --no-audit --no-fund
 
-# Copy the rest and build
+# Copy the rest and build (non-fatal: app still boots even if assets fail)
 COPY . .
-RUN npm run build 2>&1 || echo "Build warning (non-fatal)"
+RUN npm run build 2>&1 || echo "WARN: vite build failed, continuing"
 
 # ============ Stage 2: PHP runtime ============
 FROM php:8.2-fpm-alpine AS runtime
