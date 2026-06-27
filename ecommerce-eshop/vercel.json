@@ -2,37 +2,26 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "framework": null,
-  "buildCommand": "npm install && npm run build",
+  "buildCommand": "bash vercel-build.sh",
   "outputDirectory": "public",
+  "installCommand": "composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader",
   "functions": {
     "api/index.php": {
-      "runtime": "vercel-php@0.7.4"
+      "runtime": "vercel-php@0.7.4",
+      "memory": 1024,
+      "maxDuration": 30
     }
   },
   "routes": [
-    {
-      "src": "/build/(.*)",
-      "dest": "/build/$1"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/robots.txt",
-      "dest": "/robots.txt"
-    },
-    {
-      "src": "/favicon.ico",
-      "dest": "/favicon.ico"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/api/index.php"
-    }
+    { "src": "/build/(.*)", "dest": "/build/$1" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/robots.txt", "dest": "/robots.txt" },
+    { "src": "/favicon.ico", "dest": "/favicon.ico" },
+    { "src": "/up", "dest": "/api/index.php" },
+    { "src": "/(.*)", "dest": "/api/index.php" }
   ],
   "env": {
-    "APP_NAME": "Elegance Fashion",
+    "APP_NAME": "Elegance Fashion Store",
     "APP_ENV": "production",
     "APP_DEBUG": "false",
     "APP_LOCALE": "ar",
@@ -44,6 +33,15 @@
     "FILESYSTEM_DISK": "local",
     "LOG_CHANNEL": "stderr",
     "LOG_LEVEL": "warning",
-    "DB_CONNECTION": "mysql"
+    "DB_CONNECTION": "mysql",
+    "API_BASE_URL": "https://elegance-fashion-api.vercel.app/api/v1",
+    "API_TIMEOUT": "15",
+    "API_RETRIES": "2",
+    "SANCTUM_STATEFUL_DOMAINS": "*",
+    "SESSION_DOMAIN": "",
+    "VIEW_COMPILED_PATH": "/tmp/storage/framework/views",
+    "APP_CONFIG_CACHE": "/tmp/config.php",
+    "APP_EVENTS_CACHE": "/tmp/events.php",
+    "APP_ROUTES_CACHE": "/tmp/routes.php"
   }
 }

@@ -1,4 +1,4 @@
-# Vercel build artifacts
+# Vercel deployment artifacts
 .vercel/
 
 # Heavy dev-only files we don't want on Vercel
@@ -8,10 +8,33 @@
 **/storage/framework/sessions/*
 **/storage/framework/cache/data/*
 **/storage/logs/*.log
+**/storage/app/public/*
+!**/storage/app/public/.gitkeep
+
+# Local-only SQLite database files (we use external MySQL on Vercel)
+*.sqlite
+*.sqlite3
+ecomerce-shop
 
 # Local-only scripts (debug helpers, not needed in production)
-check_users.php
+test_*.php
+debug_*.php
+view_order_logs.php
+check_*.php
 fix_admin.php
 debug_auth.php
 test_hash.php
 test_order_creation.php
+
+# Documentation (kept in repo but not deployed)
+*.md
+!README.md
+
+# Docker files (not used on Vercel)
+Dockerfile
+docker-entrypoint.sh
+Dockerfile.mysql
+mysql.cnf
+
+# Render config (not used on Vercel)
+render.yaml
