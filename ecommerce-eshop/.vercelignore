@@ -1,0 +1,20 @@
+# Vercel build artifacts
+.vercel/
+
+# Heavy dev-only files we don't want on Vercel
+**/tests/
+**/tests/**/*
+**/storage/framework/views/*
+**/storage/framework/sessions/*
+**/storage/framework/cache/data/*
+**/storage/logs/*.log
+
+# Local-only scripts (debug helpers, not needed in production)
+test_*.php
+debug_*.php
+view_order_logs.php
+check_*.php
+fix_admin.php
+debug_auth.php
+test_hash.php
+test_order_creation.php

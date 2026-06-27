@@ -1,0 +1,313 @@
+body.dark-mode {
+    background-color: #0f172a !important;
+    color: #f1f5f9;
+}
+
+body.dark-mode main {
+    background-color: #0f172a !important;
+}
+
+/* البطاقات */
+body.dark-mode .card {
+    background-color: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* الجداول */
+body.dark-mode .table {
+    color: #cbd5e1 !important;
+}
+body.dark-mode .table-light {
+    background-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+body.dark-mode .table th,
+body.dark-mode .table td {
+    border-color: #334155 !important;
+}
+body.dark-mode .table-hover tbody tr:hover {
+    background-color: rgba(51, 65, 85, 0.5) !important;
+}
+
+/* العناوين والنصوص */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6,
+body.dark-mode span,
+body.dark-mode .counter {
+    color: #ffffff !important;
+}
+
+body.dark-mode .text-secondary,
+body.dark-mode .text-muted {
+    color: #94a3b8 !important;
+}
+
+/* المودال (النافذة المنبثقة) */
+body.dark-mode .modal-content {
+    background-color: #1e293b;
+    color: #fff;
+}
+body.dark-mode .modal-header {
+    border-bottom-color: #334155;
+}
+body.dark-mode .modal-footer {
+    border-top-color: #334155;
+}
+
+/* بطاقات الألوان الناعمة (تعديل الذكاء اللوني) */
+body.dark-mode .bg-soft-blue {
+    background: rgba(30, 64, 175, 0.2) !important;
+    color: #60a5fa !important;
+    border: 1px solid #1e40af !important;
+}
+body.dark-mode .bg-soft-green {
+    background: rgba(22, 101, 52, 0.2) !important;
+    color: #4ade80 !important;
+    border: 1px solid #166534 !important;
+}
+body.dark-mode .bg-soft-orange {
+    background: rgba(154, 52, 18, 0.2) !important;
+    color: #fb923c !important;
+    border: 1px solid #9a3412 !important;
+}
+body.dark-mode .bg-soft-cyan {
+    background: rgba(21, 94, 117, 0.2) !important;
+    color: #22d3ee !important;
+    border: 1px solid #155e75 !important;
+}
+/* --- ثيم الجداول المظلم --- */
+
+/* 1. الحاوية الأساسية (الكرت) */
+.dark-mode .card {
+    background-color: #1e1e2d; /* لون الخلفية الداكنة للكرت */
+    border: 1px solid #2b2b40;
+}
+
+/* 2. الجدول نفسه */
+.dark-mode .table {
+    color: #cdcdde; /* لون النص الأساسي */
+    border-color: #2b2b40;
+}
+
+/* 3. رأس الجدول (Thead) */
+.dark-mode .table-dark {
+    background-color: #151521 !important;
+    color: #3699ff !important; /* لون أزرق مميز للعناوين */
+}
+
+.dark-mode .table thead th {
+    border-bottom: 1px solid #2b2b40;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* 4. صفوف الجدول وتأثير الـ Hover */
+.dark-mode .table tbody tr {
+    border-bottom: 1px solid #2b2b40;
+    transition: all 0.2s ease;
+}
+
+.dark-mode .table-hover tbody tr:hover {
+    background-color: #242438 !important; /* لون تظليل الصف عند تمرير الماوس */
+    color: #ffffff;
+}
+
+/* 5. تنسيق الخلايا (Td) */
+.dark-mode .table td {
+    border-top: none;
+    vertical-align: middle;
+}
+
+/* 6. تنسيق الأزرار والمدخلات داخل الجدول في الوضع المظلم */
+.dark-mode .btn-outline-light {
+    border-color: #2b2b40;
+    color: #a2a2c2;
+}
+
+.dark-mode .btn-outline-light:hover {
+    background-color: #3699ff;
+    color: #fff;
+}
+
+/* 7. النصوص المكتومة (Muted Text) */
+.dark-mode .text-muted {
+    color: #727284 !important;
+}
+/* الحل النهائي لتحويل كافة الجداول للوضع المظلم */
+body.dark-mode table,
+body.dark-mode .table {
+    /* إجبار المتغيرات الأساسية على التغير */
+    --bs-table-bg: #1e293b !important;
+    --bs-table-color: #f1f5f9 !important;
+    --bs-table-border-color: #334155 !important;
+    --bs-table-striped-bg: #1e293b !important;
+    --bs-table-hover-bg: #2d3a4f !important;
+
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+    border-color: #334155 !important;
+}
+
+/* استهداف العناوين (thead) */
+body.dark-mode .table thead,
+body.dark-mode .table thead th {
+    background-color: #0f172a !important;
+    color: #38bdf8 !important; /* لون أزرق سماوي للعناوين */
+    border-bottom: 2px solid #334155 !important;
+}
+
+/* استهداف الخلايا (td) */
+body.dark-mode .table tbody td {
+    background-color: transparent !important; /* لكي يأخذ لون الصف */
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+/* إذا كان الجدول يستخدم كلاس table-light القديم، نقوم بإلغائه */
+body.dark-mode .table-light {
+    --bs-table-bg: #1e293b !important;
+    --bs-table-color: #f1f5f9 !important;
+}
+
+/* تلوين نصوص الروابط والأيقونات داخل الجدول */
+body.dark-mode .table a,
+body.dark-mode .table button:not(.btn-danger) {
+    color: #38bdf8 !important;
+}
+/* --- تنسيق النماذج (Forms) في الوضع المظلم --- */
+
+/* 1. النصوص التوضيحية (Labels) */
+body.dark-mode .form-label {
+    color: #f1f5f9 !important;
+    font-weight: 500;
+}
+
+/* 2. حقول الإدخال (Inputs) والقوائم (Select) */
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background-color: #0f172a !important; /* لون خلفية أغمق من الكرت */
+    border: 1px solid #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+/* 3. التركيز على الحقل (Focus State) */
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    background-color: #0f172a !important;
+    border-color: #38bdf8 !important; /* لون أزرق سماوي عند التركيز */
+    box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.2) !important;
+    color: #ffffff !important;
+}
+
+/* 4. تغيير لون الـ Placeholder (النص المؤقت) */
+body.dark-mode .form-control::placeholder {
+    color: #64748b !important;
+}
+
+/* 5. المودال (الذي يحتوي على الـ Form) */
+body.dark-mode .modal-content {
+    background-color: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+    border-color: #334155 !important;
+}
+
+/* 6. زر الإغلاق في المودال */
+body.dark-mode .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%); /* تحويل زر الإغلاق للون الأبيض */
+}
+/* تنسيقات الموديل عند تفعيل الوضع المظلم */
+.dark-mode .modal-content {
+    background-color: #1e293b; /* لون خلفية الموديل الداكنة */
+    color: #e2e8f0; /* لون النص الفاتح */
+    border: 1px solid #334155; /* حدود خفيفة */
+}
+
+.dark-mode .modal-header {
+    border-bottom: 1px solid #334155;
+    background-color: #0f172a; /* لون أغمق قليلاً للهيدر */
+}
+
+.dark-mode .modal-footer {
+    border-top: 1px solid #334155;
+    background-color: #0f172a;
+}
+
+/* تعديل خلفية حقول الإدخال داخل الموديل */
+.dark-mode .modal-body input,
+.dark-mode .modal-body select,
+.dark-mode .modal-body textarea {
+    background-color: #0f172a;
+    border-color: #334155;
+    color: #ffffff;
+}
+
+.dark-mode .modal-body input:focus,
+.dark-mode .modal-body select:focus {
+    background-color: #0f172a;
+    color: #ffffff;
+    border-color: #3b82f6; /* لون التوهج عند التركيز */
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+}
+
+/* تعديل العناصر ذات الخلفية الرمادية (bg-light) لتناسب الدارك مود */
+.dark-mode .bg-light,
+.dark-mode .modal-body .bg-light {
+    background-color: #334155 !important;
+    color: #f8fafc !important;
+}
+
+.dark-mode .table-light {
+    background-color: #334155;
+    color: #f8fafc;
+}
+
+.dark-mode .text-dark {
+    color: #f1f5f9 !important;
+}
+
+.dark-mode .modal-body .border {
+    border-color: #475569 !important;
+}
+/* تحسين الجداول داخل الموديلات في الدارك مود */
+.dark-mode .modal-body .table {
+    color: #e2e8f0;
+}
+
+.dark-mode .modal-body .table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* تعديل لون Badge القسم ووصف المنتج */
+.dark-mode .badge.bg-info-subtle {
+    background-color: rgba(14, 165, 233, 0.2) !important;
+    color: #7dd3fc !important;
+}
+
+.dark-mode .text-muted {
+    color: #94a3b8 !important;
+}
+
+.dark-mode .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+.dark-mode .badge.bg-danger-subtle {
+    background-color: rgba(220, 53, 69, 0.2) !important;
+    color: #ea868f !important;
+    border-color: rgba(220, 53, 69, 0.3) !important;
+}
+
+.dark-mode .badge.bg-primary-subtle {
+    background-color: rgba(13, 110, 253, 0.2) !important;
+    color: #6ea8fe !important;
+    border-color: rgba(13, 110, 253, 0.3) !important;
+}

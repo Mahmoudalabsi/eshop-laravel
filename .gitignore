@@ -1,0 +1,42 @@
+# ===== Root level =====
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.fleet/
+.nova/
+.zed/
+.phpactor.json
+
+# ===== Laravel / PHP (apply to both apps) =====
+**/.env
+**/.env.backup
+**/.env.production
+**/.env.local
+**/auth.json
+**/.phpunit.result.cache
+**/.phpunit.cache/
+**/vendor/
+**/node_modules/
+**/public/build/
+**/public/hot
+**/public/storage/
+**/storage/*.key
+**/storage/pail/
+**/storage/framework/cache/data/*
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+**/storage/logs/*
+!**/storage/framework/cache/data/.gitignore
+!**/storage/framework/sessions/.gitignore
+!**/storage/framework/views/.gitignore
+!**/storage/logs/.gitignore
+
+# ===== Vercel / Build artifacts =====
+.vercel/
+**/.vercel/
+
+# ===== Misc =====
+**/Homestead.json
+**/Homestead.yaml
