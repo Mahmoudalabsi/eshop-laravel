@@ -2,6 +2,14 @@
 
 متجر إلكتروني عربي (عربي/إنجليزي) مبني على Laravel 12 + Blade + TailwindCSS.
 
+## 🌐 النشر على Vercel
+
+دليل النشر الكامل خطوة بخطوة على Vercel مع دومين منفصل لكل مشروع:
+**👉 [DEPLOY-VERCEL.md](./DEPLOY-VERCEL.md)**
+
+متغيرات البيئة الجاهزة للنسخ:
+**👉 [VERCEL-ENV.txt](./VERCEL-ENV.txt)**
+
 ## 📦 بنية المشروع
 
 ```

@@ -1,0 +1,36 @@
+# ============================================================
+# متغيرات البيئة الجاهزة للنسخ إلى Vercel Dashboard
+# ============================================================
+
+# ─── المتغيرات المشتركة لكلا المشروعين (نسخ نفس القيم) ───
+APP_KEY=base64:GENERATE_YOUR_OWN_KEY_HERE
+APP_ENV=production
+APP_DEBUG=false
+APP_LOCALE=ar
+APP_FALLBACK_LOCALE=en
+
+# قاعدة بيانات TiDB Cloud (نفسها لكلا المشروعين)
+DB_CONNECTION=mysql
+DB_HOST=gateway01.eu-central-1.prod.aws.tidbcloud.com
+DB_PORT=4000
+DB_DATABASE=elegance_shop
+DB_USERNAME=YOUR_TIDB_USERNAME.root
+DB_PASSWORD=YOUR_TIDB_PASSWORD
+MYSQL_ATTR_SSL_CA=/etc/ssl/certs/ca-certificates.crt
+
+# ─── خاصة بالمشروع الخلفي (ecommerce-shop) ───
+APP_URL=https://elegance-fashion-api.vercel.app
+APP_NAME=Elegance Fashion API
+SANCTUM_STATEFUL_DOMAINS=*
+
+# ─── خاصة بالمشروع الأمامي (ecommerce-eshop) ───
+APP_URL=https://elegance-fashion-store.vercel.app
+APP_NAME=Elegance Fashion Store
+API_BASE_URL=https://elegance-fashion-api.vercel.app/api/v1
+API_TIMEOUT=15
+API_RETRIES=2
+
+# ============================================================
+# كيفية توليد APP_KEY:
+#   node -e "console.log('base64:' + Buffer.from(crypto.randomBytes(32)).toString('base64'))"
+# ============================================================
