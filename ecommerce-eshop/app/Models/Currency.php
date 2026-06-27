@@ -10,26 +10,48 @@ class Currency extends Model
     use HasFactory;
 
     protected $fillable = [
-        'code',
         'name',
+        'code',
         'symbol',
         'exchange_rate',
-        'is_primary'
+        'is_default',
+        'status',
     ];
 
     protected $casts = [
-        'is_primary' => 'boolean',
+        'is_default' => 'boolean',
+        'status' => 'boolean',
+        'exchange_rate' => 'float',
     ];
 
-    public function scopePrimary($query)
+    /**
+     * Get the default currency (used for fallback).
+     */
+    public function scopeDefault($query)
     {
-        return $query->where('is_primary', true)->first();
+        return $query->where('is_default', true);
     }
 
+    /**
+     * Get active currencies.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', true);
+    }
+
+    /**
+     * Convert amount from one currency to this one.
+     */
     public function convert($amount, $fromCurrency = null)
     {
-        $from = $fromCurrency ? self::where('code', $fromCurrency)->first() : self::primary();
-        if (!$from) return $amount;
+        $from = $fromCurrency
+            ? self::where('code', $fromCurrency)->first()
+            : self::where('is_default', true)->first();
+
+        if (!$from) {
+            return $amount;
+        }
 
         return ($amount / $from->exchange_rate) * $this->exchange_rate;
     }

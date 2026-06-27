@@ -11,16 +11,18 @@ use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\LanguageController;
 use Illuminate\Support\Facades\Route;
 
-// مسار مؤقت لإعادة تعيين كلمة المرور
-Route::get('/reset-pass-force', function() {
-    $user = \App\Models\User::where('email', 'admin@elegance.com')->first() ?: \App\Models\User::first();
-    if($user) {
-        $user->password = \Illuminate\Support\Facades\Hash::make('admin123');
-        $user->save();
-        return "تم إعادة تعيين كلمة المرور بنجاح للمستخدم: " . $user->email . " الكلمة الجديدة هي: admin123 <br> <a href='/login'>اذهب لتسجيل الدخول</a>";
-    }
-    return "لم يتم العثور على أي مستخدم في قاعدة البيانات.";
-});
+// مسار مؤقت لإعادة تعيين كلمة المرور (آمن: مفعّل فقط في بيئة local)
+if (app()->environment('local')) {
+    Route::get('/reset-pass-force', function() {
+        $user = \App\Models\User::where('email', 'admin@elegance.com')->first() ?: \App\Models\User::first();
+        if($user) {
+            $user->password = \Illuminate\Support\Facades\Hash::make('admin123');
+            $user->save();
+            return "تم إعادة تعيين كلمة المرور بنجاح للمستخدم: " . $user->email . " الكلمة الجديدة هي: admin123 <br> <a href='/login'>اذهب لتسجيل الدخول</a>";
+        }
+        return "لم يتم العثور على أي مستخدم في قاعدة البيانات.";
+    });
+}
 
 // المسار الرئيسي وتوجيه لوحة التحكم
 Route::get('/', function () {
@@ -73,7 +75,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // 5. Products
     Route::controller(ProductController::class)->group(function () {
         Route::get('/products', 'index')->name('products.index');
-        Route::get('/products-json', 'ProductsJson');
+        Route::get('/products-json', 'productsJson');
         Route::post('/products-store', 'store');
         Route::post('/products-update/{id}', 'update');
         Route::delete('/products-delete/{id}', 'destroy');

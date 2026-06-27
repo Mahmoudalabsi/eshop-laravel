@@ -11,13 +11,7 @@ class ProductImage extends Model
 
     protected $fillable = [
         'product_id',
-        'image',
-        'alt_text',
-        'is_primary'
-    ];
-
-    protected $casts = [
-        'is_primary' => 'boolean',
+        'image_path',
     ];
 
     public function product()
@@ -25,8 +19,11 @@ class ProductImage extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function scopePrimary($query)
+    /**
+     * Accessor for the public URL of the image.
+     */
+    public function getUrlAttribute()
     {
-        return $query->where('is_primary', true);
+        return asset('storage/' . $this->image_path);
     }
 }

@@ -1,0 +1,11 @@
+# MySQL 8 official image for Render private service
+FROM mysql:8.0
+
+# Allow connections from any host (Render web services connect from dynamic IPs)
+ENV MYSQL_ROOT_HOST=%
+ENV MYSQL_DATABASE=ecomerce_shop
+
+# Custom MySQL config for low-memory (free tier)
+COPY mysql.cnf /etc/mysql/conf.d/mysql.cnf
+
+EXPOSE 3306

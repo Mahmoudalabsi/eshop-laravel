@@ -126,11 +126,15 @@ class CartController extends Controller
 
     public function getCartData()
     {
+        $subtotal = $this->cartService->getTotal();
+
         return response()->json([
             'items' => $this->cartService->get(),
-            'total' => $this->cartService->getTotal(),
+            'total' => $subtotal,
             'count' => $this->cartService->count(),
-            'quantity' => $this->cartService->totalQuantity()
+            'quantity' => $this->cartService->totalQuantity(),
+            'tax' => round($subtotal * 0.15, 2),
+            'final_total' => round($subtotal * 1.15, 2),
         ]);
     }
 }

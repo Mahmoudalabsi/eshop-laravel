@@ -14,6 +14,8 @@ class User extends Authenticatable
 
     /**
      * The attributes that are mass assignable.
+     * NOTE: Kept in sync with ecommerce-shop's User model because both apps
+     * share the same MySQL database.
      *
      * @var list<string>
      */
@@ -22,6 +24,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'status',
+        'profile_image',
     ];
 
     /**
@@ -45,5 +49,21 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Check if the user is an admin.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Check if the user account is active.
+     */
+    public function isActive(): bool
+    {
+        return (int) $this->status === 1;
     }
 }

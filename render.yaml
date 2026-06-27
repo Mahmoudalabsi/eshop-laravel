@@ -1,0 +1,146 @@
+# Render.com Blueprint - Elegance Fashion (Backend + Frontend + MySQL)
+# Docs: https://render.com/docs/blueprint-spec
+# How to use:
+#   1. Push this file to GitHub repo root (Mahmoudalabsi/eshop-laravel)
+#   2. Go to https://dashboard.render.com/blueprints
+#   3. Select the repo, Render will detect this file and offer to create all services
+#   4. Provide values for the env vars marked with "sync: false" when prompted
+
+services:
+  # ===== MySQL Database (shared by both apps) =====
+  - type: pserv
+    name: elegance-mysql
+    env: docker
+    region: singapore  # or oregon / frankfurt — pick the closest to your users
+    plan: free  # 90-day trial; then $7/month. For long-term free, use external Aiven/TiDB instead.
+    dockerfilePath: ./Dockerfile.mysql
+    dockerContext: .
+    envVars:
+      - key: MYSQL_ROOT_PASSWORD
+        sync: false  # you set this when applying the blueprint
+      - key: MYSQL_DATABASE
+        value: ecomerce_shop
+      - key: MYSQL_USER
+        value: eshop
+      - key: MYSQL_PASSWORD
+        sync: false
+    disk:
+      name: elegance-mysql-disk
+      mountPath: /var/lib/mysql
+      sizeGB: 5
+
+  # ===== Backend: ecommerce-shop (Admin Dashboard + API) =====
+  - type: web
+    name: elegance-fashion-api
+    env: docker
+    region: singapore
+    plan: free  # 750 hours/month free
+    rootDir: ecommerce-shop
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /up
+    autoDeploy: true
+    envVars:
+      - key: APP_NAME
+        value: Elegance Fashion API
+      - key: APP_ENV
+        value: production
+      - key: APP_KEY
+        sync: false  # generate locally with `php artisan key:generate` and paste here
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        value: https://elegance-fashion-api.onrender.com
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_HOST
+        fromService:
+          type: pserv
+          name: elegance-mysql
+          property: host
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_DATABASE
+        value: ecomerce_shop
+      - key: DB_USERNAME
+        value: eshop
+      - key: DB_PASSWORD
+        fromService:
+          type: pserv
+          name: elegance-mysql
+          envVarKey: MYSQL_PASSWORD
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      - key: SANCTUM_STATEFUL_DOMAINS
+        value: "*"
+      - key: SESSION_DOMAIN
+        value: "*"
+
+  # ===== Frontend: ecommerce-eshop (Storefront) =====
+  - type: web
+    name: elegance-fashion-store
+    env: docker
+    region: singapore
+    plan: free
+    rootDir: ecommerce-eshop
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /up
+    autoDeploy: true
+    envVars:
+      - key: APP_NAME
+        value: Elegance Fashion
+      - key: APP_ENV
+        value: production
+      - key: APP_KEY
+        sync: false  # generate locally with `php artisan key:generate` and paste here
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        value: https://elegance-fashion-store.onrender.com
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_HOST
+        fromService:
+          type: pserv
+          name: elegance-mysql
+          property: host
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_DATABASE
+        value: ecomerce_shop
+      - key: DB_USERNAME
+        value: eshop
+      - key: DB_PASSWORD
+        fromService:
+          type: pserv
+          name: elegance-mysql
+          envVarKey: MYSQL_PASSWORD
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      - key: API_BASE_URL
+        value: https://elegance-fashion-api.onrender.com/api/v1
+      - key: API_TIMEOUT
+        value: "10"
+      - key: API_RETRIES
+        value: "1"

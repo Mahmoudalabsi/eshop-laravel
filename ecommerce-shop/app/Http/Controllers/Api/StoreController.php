@@ -10,7 +10,9 @@ use App\Models\Order;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\CategoryResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class StoreController extends Controller
 {
@@ -149,30 +151,71 @@ class StoreController extends Controller
     public function placeOrder(Request $request)
     {
         $request->validate([
-            'customer_name' => 'required',
-            'phone' => 'required',
-            'address' => 'required',
-            'items' => 'required|array',
+            'customer_name' => 'required|string|max:255',
+            'customer_email' => 'nullable|email|max:255',
+            'customer_phone' => 'nullable|string|max:50',
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:500',
+            'shipping_address' => 'nullable|array',
+            'billing_address' => 'nullable|array',
+            'shipping_cost' => 'nullable|numeric|min:0',
+            'currency_code' => 'nullable|string|max:10',
+            'notes' => 'nullable|string|max:1000',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'nullable|numeric|min:0',
+            'items.*.price' => 'nullable|numeric|min:0',
+            'items.*.attributes' => 'nullable|array',
         ]);
 
-        $order = Order::create([
-            'user_id' => auth('sanctum')->id(),
-            'customer_name' => $request->customer_name,
-            'phone' => $request->phone,
-            'address' => $request->address,
-            'total_price' => $request->total_price,
-            'status' => 'pending'
-        ]);
+        return DB::transaction(function () use ($request) {
+            // Calculate total from items (prefer unit_price, fall back to price)
+            $subtotal = collect($request->items)->sum(function ($item) {
+                $unitPrice = $item['unit_price'] ?? $item['price'] ?? 0;
+                return $unitPrice * $item['quantity'];
+            });
 
-        foreach ($request->items as $item) {
-            $order->items()->create([
-                'product_id' => $item['id'],
-                'quantity' => $item['quantity'],
-                'price' => $item['price'],
+            $shippingCost = $request->shipping_cost ?? 0;
+            $total = $subtotal + $shippingCost;
+
+            // Generate unique order number
+            $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(Str::random(6));
+
+            $order = Order::create([
+                'user_id' => auth('sanctum')->id(),
+                'order_number' => $orderNumber,
+                'customer_name' => $request->customer_name,
+                'customer_email' => $request->customer_email,
+                'customer_phone' => $request->customer_phone ?? $request->phone,
+                'phone' => $request->phone ?? $request->customer_phone,
+                'address' => $request->address,
+                'shipping_address' => $request->shipping_address,
+                'billing_address' => $request->billing_address,
+                'subtotal' => $subtotal,
+                'shipping_cost' => $shippingCost,
+                'total_price' => $total,
+                'total' => $total,
+                'currency_code' => $request->currency_code ?? 'SAR',
+                'status' => 'pending',
+                'payment_status' => 'pending',
+                'notes' => $request->notes,
             ]);
-        }
 
-        return response()->json(['message' => 'Order placed successfully', 'order' => $order]);
+            foreach ($request->items as $item) {
+                $order->items()->create([
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['unit_price'] ?? $item['price'] ?? 0,
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Order placed successfully',
+                'data' => $order->load('items'),
+            ], 201);
+        });
     }
 
     public function getOffers()
@@ -196,21 +239,21 @@ class StoreController extends Controller
         ]);
 
         $user = $request->user();
-        
-        // Handle profile image upload
+
+        // Handle profile image upload via Storage facade (works on Render/Vercel/local)
         if ($request->hasFile('profile_image')) {
             // Delete old image if exists
-            if ($user->profile_image && file_exists(public_path($user->profile_image))) {
-                unlink(public_path($user->profile_image));
+            if ($user->profile_image) {
+                $oldPath = str_replace('storage/', '', $user->profile_image);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($oldPath);
             }
-            
+
             // Store new image
             $image = $request->file('profile_image');
-            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('uploads/profiles'), $imageName);
-            $user->profile_image = 'uploads/profiles/' . $imageName;
+            $path = $image->store('profiles', 'public');
+            $user->profile_image = 'storage/' . $path;
         }
-        
+
         // Update other fields
         if ($request->has('name')) {
             $user->name = $request->name;
@@ -218,11 +261,11 @@ class StoreController extends Controller
         if ($request->has('email')) {
             $user->email = $request->email;
         }
-        
+
         $user->save();
-        
+
         return response()->json([
-            'message' => 'Profile updated', 
+            'message' => 'Profile updated',
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,

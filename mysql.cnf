@@ -1,0 +1,16 @@
+[mysqld]
+# Low-memory config for Render free tier (512MB RAM)
+innodb_buffer_pool_size=128M
+innodb_log_file_size=32M
+innodb_flush_log_at_trx_commit=2
+innodb_flush_method=O_DIRECT
+max_connections=50
+max_allowed_packet=16M
+character-set-server=utf8mb4
+collation-server=utf8mb4_unicode_ci
+
+[client]
+default-character-set=utf8mb4
+
+[mysql]
+default-character-set=utf8mb4

@@ -1,5 +1,4 @@
 @extends('eshop.layouts.admin')
-@extends('assets.css.style')
 
 
 @section('content')

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->longText('content')->nullable();
+            $table->string('type')->default('general'); // general, clothing, shoes, etc.
             $table->timestamps();
         });
     }
