@@ -35,6 +35,7 @@
     "LOG_CHANNEL": "stderr",
     "LOG_LEVEL": "warning",
     "DB_CONNECTION": "mysql",
+    "MYSQL_ATTR_SSL_CA": "/etc/ssl/certs/ca-certificates.crt",
     "SANCTUM_STATEFUL_DOMAINS": "*",
     "SESSION_DOMAIN": "",
     "VIEW_COMPILED_PATH": "/tmp/storage/framework/views",
