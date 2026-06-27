@@ -1,11 +1,7 @@
 <?php
 /**
  * Vercel Serverless Entry Point for Laravel 12
- *
- * This file is loaded by the vercel-php runtime. It:
- *  1) Sets up the writable /tmp directory for Laravel storage on serverless.
- *  2) Symlinks/copies the framework storage directories to /tmp.
- *  3) Boots Laravel's kernel and serves the request.
+ * Uses /tmp as the only writable directory for Laravel storage.
  */
 
 use Illuminate\Foundation\Application;
@@ -13,51 +9,59 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-// ----- 1. Make storage writable on serverless -----
-$tmpStorage = '/tmp/storage';
 $basePath = dirname(__DIR__);
+$tmpStorage = '/tmp/laravel-storage';
 
-if (!is_dir($tmpStorage)) {
-    @mkdir($tmpStorage . '/framework/cache/data', 0777, true);
-    @mkdir($tmpStorage . '/framework/sessions', 0777, true);
-    @mkdir($tmpStorage . '/framework/views', 0777, true);
-    @mkdir($tmpStorage . '/logs', 0777, true);
-}
+// ----- 1. Ensure /tmp/storage exists -----
+@mkdir($tmpStorage . '/framework/cache/data', 0777, true);
+@mkdir($tmpStorage . '/framework/sessions', 0777, true);
+@mkdir($tmpStorage . '/framework/views', 0777, true);
+@mkdir($tmpStorage . '/logs', 0777, true);
 
-// Symlink the writable storage into place (only if not already linked)
-$storageLink = $basePath . '/storage';
-if (!is_link($storageLink)) {
-    // On Vercel, /tmp is the only writable directory. We can't replace `storage/`
-    // (it's part of the deployed bundle and contains some files), so we override
-    // the framework subdirectories only.
-    foreach (['framework', 'logs'] as $dir) {
-        $target = $storageLink . '/' . $dir;
-        if (is_dir($target)) {
-            // Move existing content to /tmp if any
-            $tmpDir = $tmpStorage . '/' . $dir;
-            if (!is_dir($tmpDir)) {
-                @mkdir($tmpDir, 0777, true);
-            }
-            // Replace directory with symlink to /tmp
-            @rmdir($target);
-            @symlink($tmpDir, $target);
+// ----- 2. Redirect Laravel storage subdirs to /tmp via custom constants -----
+// We can't replace the storage/ directory (it's bundled), so we override
+// the path Laravel uses at runtime by setting environment-friendly defaults.
+$appStorage = $basePath . '/storage';
+foreach (['framework', 'logs'] as $sub) {
+    $link = $appStorage . '/' . $sub;
+    $target = $tmpStorage . '/' . $sub;
+
+    // Skip if already a symlink pointing to /tmp
+    if (is_link($link) && readlink($link) === $target) {
+        continue;
+    }
+
+    // Try to remove existing directory/symlink
+    if (is_dir($link) && !is_link($link)) {
+        // Recursively delete (Laravel's storage/framework subdirs are typically empty in fresh installs)
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($link, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $fileinfo) {
+            $fileinfo->isDir() ? @rmdir($fileinfo->getRealPath()) : @unlink($fileinfo->getRealPath());
         }
+        @rmdir($link);
+    } elseif (is_link($link)) {
+        @unlink($link);
+    }
+
+    // Create symlink
+    if (!file_exists($link)) {
+        @symlink($target, $link);
     }
 }
 
-// ----- 2. Maintenance mode (optional) -----
-$maintenance = $basePath . '/storage/framework/maintenance.php';
-if (file_exists($maintenance)) {
-    require $maintenance;
-}
+// ----- 3. Maintenance mode (skip on Vercel — managed via DB instead) -----
+// We don't read storage/framework/maintenance.php here because storage is symlinked to /tmp
+// which is empty across cold starts. Use APP_MAINTENANCE_DRIVER=database instead.
 
-// ----- 3. Boot Laravel -----
+// ----- 4. Boot Laravel -----
 require $basePath . '/vendor/autoload.php';
 
 /** @var Application $app */
 $app = require_once $basePath . '/bootstrap/app.php';
 
-// Handle the request
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 
 $response = $kernel->handle(
