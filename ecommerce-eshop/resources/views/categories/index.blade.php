@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
+@section('title', 'الأقسام - ' . config('app.name'))
+
 @section('content')
+<div class="container py-5">
     <div class="mb-5 text-center px-4">
         <h1 class="display-5 fw-bold text-dark mb-3">تسوق حسب القسم</h1>
         <p class="text-secondary mx-auto" style="max-width: 600px;">تصفح مجموعة واسعة من الأقسام وابحث عن ما تحتاجه بالضبط.
@@ -43,6 +46,7 @@
             </div>
         @endforelse
     </div>
+</div>
 
     <style>
         .rounded-4 {

@@ -1,8 +1,16 @@
 @php
-    // جلب اللغات المفعلة من قاعدة البيانات
-    $languages = \App\Models\Language::where('status', 1)->get();
+    // جلب اللغات المفعلة من قاعدة البيانات (مع حماية ضد فقدان الجداول)
+    try {
+        $languages = \App\Models\Language::where('status', 1)->get();
+    } catch (\Throwable $e) {
+        $languages = collect([]);
+    }
     // جلب العملات المفعلة
-    $currencies = \App\Models\Currency::where('status', 1)->get();
+    try {
+        $currencies = \App\Models\Currency::where('status', 1)->get();
+    } catch (\Throwable $e) {
+        $currencies = collect([]);
+    }
     // تحديد اللغة الحالية
     $currentLocale = app()->getLocale();
     $currentLang = $languages->where('code', $currentLocale)->first();
@@ -100,7 +108,14 @@
                                 href="{{ route('products.index') }}"
                                 title="{{ __('messages.products') }}">{{ __('messages.products') }}</a>
                         </li>
-                        @foreach (\App\Models\Category::take(3)->get() as $navCat)
+                        @php
+                            try {
+                                $navCategories = \App\Models\Category::where('status', 1)->take(3)->get();
+                            } catch (\Throwable $e) {
+                                $navCategories = collect([]);
+                            }
+                        @endphp
+                        @foreach ($navCategories as $navCat)
                             <li class="nav-item">
                                 <a class="nav-link" href="{{ route('categories.show', $navCat->id) }}"
                                     title="{{ $navCat->name }}">{{ $navCat->name }}</a>

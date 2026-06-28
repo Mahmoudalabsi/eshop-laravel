@@ -58,9 +58,7 @@
 @endpush
 
 @section('content')
-    <div class="container py-4 text-end" dir="{{ app()->getLocale() == 'ar' ? 'rtl' : 'ltr' }}">
-
-        <div class="container py-5 text-end" dir="{{ app()->getLocale() == 'ar' ? 'rtl' : 'ltr' }}">
+    <div class="container py-5 text-end" dir="{{ app()->getLocale() == 'ar' ? 'rtl' : 'ltr' }}">
 
             <!-- Section: Active Campaigns (Real API Data) -->
             @if ($campaigns->isNotEmpty())
