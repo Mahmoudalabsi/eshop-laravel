@@ -1,5 +1,6 @@
 # ============================================================
 # متغيرات البيئة الجاهزة للنسخ إلى Vercel Dashboard
+# (مع Neon PostgreSQL)
 # ============================================================
 
 # ─── المتغيرات المشتركة لكلا المشروعين (نسخ نفس القيم) ───
@@ -9,19 +10,21 @@ APP_DEBUG=false
 APP_LOCALE=ar
 APP_FALLBACK_LOCALE=en
 
-# قاعدة بيانات TiDB Cloud (نفسها لكلا المشروعين)
-DB_CONNECTION=mysql
-DB_HOST=gateway01.eu-central-1.prod.aws.tidbcloud.com
-DB_PORT=4000
-DB_DATABASE=elegance_shop
-DB_USERNAME=YOUR_TIDB_USERNAME.root
-DB_PASSWORD=YOUR_TIDB_PASSWORD
-MYSQL_ATTR_SSL_CA=/etc/ssl/certs/ca-certificates.crt
+# قاعدة بيانات Neon PostgreSQL (نفسها لكلا المشروعين)
+DB_CONNECTION=pgsql
+DB_HOST=ep-xxxxx-xxxx-pooler.REGION.aws.neon.tech
+DB_PORT=5432
+DB_DATABASE=neondb
+DB_USERNAME=neondb_owner
+DB_PASSWORD=YOUR_NEON_PASSWORD
+DB_SSLMODE=require
+DB_SSLROOTCERT=/etc/ssl/certs/ca-certificates.crt
 
 # ─── خاصة بالمشروع الخلفي (ecommerce-shop) ───
 APP_URL=https://elegance-fashion-api.vercel.app
 APP_NAME=Elegance Fashion API
 SANCTUM_STATEFUL_DOMAINS=*
+RUN_MIGRATIONS_ON_BOOT=true
 
 # ─── خاصة بالمشروع الأمامي (ecommerce-eshop) ───
 APP_URL=https://elegance-fashion-store.vercel.app
@@ -33,4 +36,10 @@ API_RETRIES=2
 # ============================================================
 # كيفية توليد APP_KEY:
 #   node -e "console.log('base64:' + Buffer.from(crypto.randomBytes(32)).toString('base64'))"
+#
+# كيفية الحصول على بيانات Neon PostgreSQL:
+#   1. سجّل على https://neon.tech/signup (بحساب GitHub)
+#   2. Create Project → اختر Region: AWS EU North (Stockholm)
+#   3. في صفحة Connection Details، استخدم الـ Pooled connection
+#   4. انسخ Host/User/Password/Database
 # ============================================================

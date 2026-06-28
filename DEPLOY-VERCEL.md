@@ -1,334 +1,213 @@
-# دليل النشر الكامل على Vercel — متجر Elegance Fashion
+# دليل النشر: Vercel + Neon PostgreSQL
 
-> **الهدف**: نشر مشروعين منفصلين على Vercel، لكل منهما دومين خاص، مربوطين عبر API.
->
-> - **الخلفية (ecommerce-shop)**: `https://elegance-fashion-api.vercel.app` — يقدم `/api/v1/*`
-> - **الواجهة (ecommerce-eshop)**: `https://elegance-fashion-store.vercel.app` — يستدعي API الخلفية
+> **الهدف**: نشر متجر Elegance Fashion على Vercel (مشروعان منفصلان) باستخدام قاعدة بيانات Neon PostgreSQL مجانية.
 
 ---
 
-## 📋 ما تم إنجازه في الكود
+## ⏱️ الوقت المتوقع: 15 دقيقة
 
-### 1) ملفات النشر لكل مشروع
-| الملف | الوظيفة |
-|------|---------|
-| `ecommerce-shop/vercel.json` | إعدادات Vercel للمشروع الخلفي |
-| `ecommerce-shop/vercel-build.sh` | سكربت البناء (composer + npm + artisan cache) |
-| `ecommerce-shop/api/index.php` | نقطة دخول Laravel على Vercel serverless |
-| `ecommerce-shop/.vercelignore` | ملفات مستثناة من الرفع |
-| `ecommerce-eshop/vercel.json` | إعدادات Vercel للواجهة الأمامية + `API_BASE_URL` |
-| `ecommerce-eshop/vercel-build.sh` | نفس سكربت البناء |
-| `ecommerce-eshop/api/index.php` | نقطة دخول Laravel على Vercel serverless |
-| `ecommerce-eshop/.vercelignore` | ملفات مستثناة |
-
-### 2) كيف يعمل الربط عبر API
-- في `ecommerce-eshop/config/api.php` يُقرأ `API_BASE_URL` من `.env`
-- في `ecommerce-eshop/app/Services/ApiService.php` يُستخدم `Http::timeout()` للاتصال
-- في `vercel.json` للواجهة الأمامية تم تثبيت:
-  ```json
-  "API_BASE_URL": "https://elegance-fashion-api.vercel.app/api/v1"
-  ```
-- في `ecommerce-shop/config/cors.php` الـ CORS مفتوح لجميع النطاقات (`'*'`)
-
-### 3) ما تم إصلاحه في الكود سابقاً (14 خطأ برمجي)
-جميع الأخطاء الـ 14 المذكورة في `/home/z/my-project/code-review.md` تم إصلاحها في الكوميت `6701995`، ومنها:
-- ترحيلات مكررة، نموذج العملة،`placeOrder` API، `CartController` (tax/final_total)
-- إزالة ملفات الـ debug، إصلاح `Storage` facade، إصلاح `AppLayout`/`GuestLayout`
-- إصلاح `Sanctum token` (withToken يضيف Bearer تلقائياً)
+## 📋 ما ستحصل عليه في النهاية:
+- **API الخلفية**: `https://elegance-fashion-api.vercel.app`
+- **متجر الواجهة**: `https://elegance-fashion-store.vercel.app`
+- **قاعدة بيانات**: Neon PostgreSQL (مجانية للأبد، 0.5GB)
 
 ---
 
-## 🚀 خطوات النشر على Vercel
+## 🗄️ الخطوة 1: إنشاء قاعدة بيانات Neon (3 دقائق)
 
-### الخطوة 1: إعداد قاعدة بيانات MySQL سحابية مجانية
-
-Vercel لا يوفر قاعدة بيانات. سنستخدم **TiDB Cloud** (مجاني 5GB، متوافق 100% مع MySQL).
-
-1. اذهب إلى: https://tidbcloud.com/free-trial
-2. سجّل حساباً جديداً (يمكن استخدام GitHub/Google)
-3. اختر **Serverless Tier** (المجاني بالكامل)
-4. اختر المنطقة `Frankfurt (eu-central-1)` (الأقرب لخوادم Vercel)
-5. بعد إنشاء الكلاستر، اضغط على **Connect** ثم **Overview**
-6. سترى إعدادات الاتصال تشبه:
+1. اذهب إلى: **https://neon.tech/signup**
+2. سجّل بحساب GitHub (نفس حسابك `Mahmoudalabsi`)
+3. اضغط **"Create Project"** وأدخل:
+   - **Project name**: `elegance-fashion`
+   - **Postgres version**: 16
+   - **Region**: `AWS EU North (Stockholm)` — الأقرب لخوادم Vercel
+4. اضغط **"Create Project"**
+5. في صفحة **"Connection Details"**:
+   - بدّل إلى **"Pooled connection"** (مهم للأداء)
+   - اختر **Database**: `neondb`
+   - اختر **Role**: `neondb_owner`
+6. **انسخ هذه البيانات** (ستحتاجها في الخطوة 3):
    ```
-   Host:    gateway01.eu-central-1.prod.aws.tidbcloud.com
-   Port:    4000
-   User:    xxxxx.root
-   Password: ********
+   Host:     ep-xxxxx-xxxx-pooler.eu-north-1.aws.neon.tech
+   Database: neondb
+   User:     neondb_owner
+   Password: xxxxxxxxxxxxxxxx
    ```
-7. اضغط على **Generate TLS Certificate** ثم نزّل `ca.pem` (لا نحتاجه لـ Laravel لأنه يتصل عبر TLS تلقائياً)
-8. أنشئ قاعدة بيانات باسم `elegance_shop`:
-   ```sql
-   CREATE DATABASE elegance_shop CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   ```
-
-**احفظ هذه القيم في مكان آمن، سنستخدمها لاحقاً:**
-- `DB_HOST` = gateway01.eu-central-1.prod.aws.tidbcloud.com
-- `DB_PORT` = 4000
-- `DB_DATABASE` = elegance_shop
-- `DB_USERNAME` = xxxxx.root
-- `DB_PASSWORD` = كلمة المرور التي اخترتها
-
-> **بديل TiDB**: Aiven (https://aiven.io) يوفر MySQL مجاني لمدة شهر، أو PlanetScale القديم (لم يعد مجانياً). TiDB هو الخيار الأفضل حالياً.
 
 ---
 
-### الخطوة 2: توليد APP_KEY
+## 🔑 الخطوة 2: توليد APP_KEY (30 ثانية)
 
-شغّل هذا الأمر محلياً واحفظ الناتج:
-
-```bash
-php -r "echo 'base64:'.base64_encode(random_bytes(32)).PHP_EOL;"
-```
-
-أو إذا لم يكن PHP مثبتاً محلياً:
+افتح Terminal/CMD والصق هذا الأمر:
 
 ```bash
 node -e "console.log('base64:' + Buffer.from(crypto.randomBytes(32)).toString('base64'))"
 ```
 
-ستحصل على شيء مثل: `base64:W4YZkqSXcK7F2qN3vJ8Xy5b1pTqj6xKQn8vLz9yW0aM=`
+ستحصل على شيء مثل:
+```
+base64:W4YZkqSXcK7F2qN3vJ8Xy5b1pTqj6xKQn8vLz9yW0aM=
+```
 
-> **مهم**: استخدم نفس `APP_KEY` في كلا المشروعين لتعمل الجلسات بشكل صحيح بين الواجهة والخلفية إذا لزم الأمر.
+انسخه (ستحتاجه في الخطوة 3).
 
 ---
 
-### الخطوة 3: استيراد المشروع الأول (الخلفية) على Vercel
+## 🚀 الخطوة 3: نشر المشروع الخلفي على Vercel (5 دقائق)
 
-1. اذهب إلى: https://vercel.com/new
-2. اختر مستودع GitHub: **Mahmoudalabsi/eshop-laravel**
-3. في صفحة الإعدادات:
+1. اذهب إلى: **https://vercel.com/new**
+2. سجّل الدخول بحساب **GitHub** (نفس حسابك `Mahmoudalabsi`)
+3. اختر مستودع: **eshop-laravel**
+4. في صفحة الإعدادات:
    - **Project Name**: `elegance-fashion-api`
    - **Framework Preset**: اتركه Other
-   - **Root Directory**: اضغط Edit واختر `ecommerce-shop`
-   - **Build Command**: اترك الافتراضي (سيقرأه من `vercel.json`)
-   - **Output Directory**: اتركه (سيقرأ `public` من `vercel.json`)
-4. في **Environment Variables**، أضف المتغيرات التالية:
+   - **Root Directory**: اضغط Edit → اختر `ecommerce-shop` → Confirm
+5. افتح قسم **"Environment Variables"** وأضف هذه المتغيرات (انسخها من `VERCEL-ENV.txt`):
 
 | Key | Value |
 |-----|-------|
-| `APP_KEY` | (الـ APP_KEY الذي توليده في الخطوة 2) |
+| `APP_KEY` | (الـ APP_KEY الذي ولّدته في الخطوة 2) |
 | `APP_URL` | `https://elegance-fashion-api.vercel.app` |
-| `DB_HOST` | (TiDB Host) |
-| `DB_PORT` | `4000` |
-| `DB_DATABASE` | `elegance_shop` |
-| `DB_USERNAME` | (TiDB User) |
-| `DB_PASSWORD` | (TiDB Password) |
-| `DB_CONNECTION` | `mysql` |
+| `APP_NAME` | `Elegance Fashion API` |
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `APP_LOCALE` | `ar` |
+| `DB_CONNECTION` | `pgsql` |
+| `DB_HOST` | (Neon Host من الخطوة 1) |
+| `DB_PORT` | `5432` |
+| `DB_DATABASE` | `neondb` |
+| `DB_USERNAME` | `neondb_owner` |
+| `DB_PASSWORD` | (Neon Password من الخطوة 1) |
+| `DB_SSLMODE` | `require` |
+| `DB_SSLROOTCERT` | `/etc/ssl/certs/ca-certificates.crt` |
+| `SANCTUM_STATEFUL_DOMAINS` | `*` |
+| `RUN_MIGRATIONS_ON_BOOT` | `true` |
 
-5. اضغط **Deploy** وانتظر اكتمال البناء (3-5 دقائق).
-6. ستحصل على الرابط: `https://elegance-fashion-api.vercel.app`
+6. اضغط **"Deploy"** وانتظر 3-5 دقائق
+7. ستظهر لك رسالة: **"Congratulations!"** مع الرابط:
+   👉 `https://elegance-fashion-api.vercel.app`
 
 ---
 
-### الخطوة 4: استيراد المشروع الثاني (الواجهة الأمامية) على Vercel
+## 🛍️ الخطوة 4: نشر المشروع الأمامي على Vercel (5 دقائق)
 
-1. اذهب مرة أخرى إلى: https://vercel.com/new
-2. اختر نفس المستودع: **Mahmoudalabsi/eshop-laravel**
+1. اذهب مرة أخرى إلى: **https://vercel.com/new**
+2. اختر نفس المستودع: **eshop-laravel**
 3. في صفحة الإعدادات:
    - **Project Name**: `elegance-fashion-store`
    - **Framework Preset**: Other
-   - **Root Directory**: اضغط Edit واختر `ecommerce-eshop`
-4. في **Environment Variables**، أضف:
+   - **Root Directory**: اضغط Edit → اختر `ecommerce-eshop` → Confirm
+4. أضف متغيرات البيئة:
 
 | Key | Value |
 |-----|-------|
-| `APP_KEY` | (نفس APP_KEY الذي استخدمته في الخطوة 3) |
+| `APP_KEY` | (نفس APP_KEY من الخطوة 2) |
 | `APP_URL` | `https://elegance-fashion-store.vercel.app` |
+| `APP_NAME` | `Elegance Fashion Store` |
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `APP_LOCALE` | `ar` |
+| `DB_CONNECTION` | `pgsql` |
+| `DB_HOST` | (نفس Neon Host) |
+| `DB_PORT` | `5432` |
+| `DB_DATABASE` | `neondb` |
+| `DB_USERNAME` | `neondb_owner` |
+| `DB_PASSWORD` | (نفس Neon Password) |
+| `DB_SSLMODE` | `require` |
+| `DB_SSLROOTCERT` | `/etc/ssl/certs/ca-certificates.crt` |
 | `API_BASE_URL` | `https://elegance-fashion-api.vercel.app/api/v1` |
 | `API_TIMEOUT` | `15` |
-| `DB_HOST` | (نفس TiDB Host) |
-| `DB_PORT` | `4000` |
-| `DB_DATABASE` | `elegance_shop` |
-| `DB_USERNAME` | (نفس TiDB User) |
-| `DB_PASSWORD` | (نفس TiDB Password) |
-| `DB_CONNECTION` | `mysql` |
+| `API_RETRIES` | `2` |
+| `SANCTUM_STATEFUL_DOMAINS` | `*` |
 
-5. اضغط **Deploy** وانتظر البناء.
-6. ستحصل على الرابط: `https://elegance-fashion-store.vercel.app`
-
-> **ملاحظة**: كلا المشروعين يتشاركان نفس قاعدة البيانات. الواجهة الأمامية لا تحتاج جداول خاصة بها، لكنها تحتاج الاتصال لجلسات Laravel.
+5. اضغط **"Deploy"** وانتظر 3-5 دقائق
+6. ستحصل على: 👉 `https://elegance-fashion-store.vercel.app`
 
 ---
 
-### الخطوة 5: تشغيل الترحيلات (Migrations) و Seeders
+## ✅ الخطوة 5: التحقق (دقيقتان)
 
-Vercel ليس لديه SSH/Terminal للوصول إلى lambda. لذا سنشغل الترحيلات بطريقتين:
+الآن المigrations والـ seeders تعمل **تلقائياً** عند أول زيارة (بفضل `RUN_MIGRATIONS_ON_BOOT=true`).
 
-#### الخيار A: استخدام Vercel CLI (موصى به)
-
-```bash
-# ثبّت Vercel CLI
-npm i -g vercel
-
-# سجّل الدخول (سيفتح متصفحاً)
-vercel login
-
-# ادخل إلى مجلد المشروع الخلفي
-cd ecommerce-shop
-
-# نزّل متغيرات البيئة من Vercel إلى ملف .env محلي
-vercel env pull .env.production.local --environment=production --yes
-
-# شغّل الترحيلات باستخدام قاعدة البيانات السحابية
-php artisan migrate --force --env=production
-
-# شغّل الـ Seeders لإنشاء الأدمن والبيانات الأساسية
-php artisan db:seed --force --env=production
-
-# امسح الكاش
-php artisan config:clear
-php artisan cache:clear
+### اختبر الـ API:
+افتح في المتصفح:
 ```
+https://elegance-fashion-api.vercel.app/up
+```
+يجب أن يُرجع: `OK`
 
-#### الخيار B: استخدام أداة خارجية مثل Adminer أو DBeaver
+### اختبر المنتجات:
+```
+https://elegance-fashion-api.vercel.app/api/v1/products
+```
+يجب أن يُرجع JSON بقائمة المنتجات (الـ seeder أنشأها تلقائياً).
 
-1. نزّل DBeaver: https://dbeaver.io
-2. أضف اتصال MySQL جديد:
-   - Host: (TiDB Host)
-   - Port: 4000
-   - Database: elegance_shop
-   - User: (TiDB User)
-   - Password: (TiDB Password)
-   - SSL: مفعّل (Required)
-3. انسخ محتوى ملفات الترحيل يدوياً (مُعقّد، لذا الخيار A أفضل)
+### اختبر المتجر:
+```
+https://elegance-fashion-store.vercel.app
+```
+يجب أن تظهر صفحة المتجر مع المنتجات.
 
-#### بيانات دخول الأدمن الافتراضية (بعد الـ Seed):
+### بيانات دخول الأدمن:
 - **البريد**: `admin@elegance.com`
 - **كلمة المرور**: `admin123`
-
----
-
-### الخطوة 6: التحقق من النشر
-
-بعد اكتمال كل شيء، اختبر:
-
-1. **الخلفية** - تحقق من نقطة الصحة:
-   ```
-   https://elegance-fashion-api.vercel.app/up
-   ```
-   يجب أن يُرجع: `OK` أو صفحة فارغة بحالة 200
-
-2. **الخلفية** - تحقق من API:
-   ```
-   https://elegance-fashion-api.vercel.app/api/v1/products
-   ```
-   يجب أن يُرجع JSON بقائمة المنتجات
-
-3. **الواجهة الأمامية** - افتح المتجر:
-   ```
-   https://elegance-fashion-store.vercel.app
-   ```
-   يجب أن تظهر صفحة المتجر مع المنتجات (إذا كانت قاعدة البيانات مُزوّدة)
-
-4. **اختبار الربط**: في صفحة المتجر، افتح Developer Tools → Network، يجب أن ترى طلبات إلى `elegance-fashion-api.vercel.app` ترجع ببيانات.
-
----
-
-## 🌐 إضافة دومين مخصص (اختياري)
-
-لإضافة دومين مثل `api.elegance-fashion.com` و `shop.elegance-fashion.com`:
-
-### للمشروع الخلفي (elegance-fashion-api):
-1. ادخل إلى https://vercel.com/dashboard → اختر `elegance-fashion-api`
-2. اذهب إلى **Settings → Domains**
-3. أضف: `api.yourdomain.com`
-4. اتبع التعليمات لتحديث DNS لدى مُوفّر الدومين:
-   - أضف سجل `CNAME` يشير إلى `cname.vercel-dns.com`
-   - أو سجل `A` يشير إلى `76.76.21.21`
-
-### للمشروع الأمامي (elegance-fashion-store):
-1. اذهب إلى Settings → Domains
-2. أضف: `shop.yourdomain.com` أو `yourdomain.com`
-3. حدّث DNS بنفس الطريقة
-
-### تحديث API_BASE_URL بعد إضافة الدومين:
-إذا أضفت دوميناً مخصصاً للخلفية، حدّث متغير البيئة `API_BASE_URL` في المشروع الأمامي:
-1. Vercel Dashboard → `elegance-fashion-store` → Settings → Environment Variables
-2. عدّل `API_BASE_URL` ليكون: `https://api.yourdomain.com/api/v1`
-3. احفظ، ثم أعد النشر (Redeploy) من تبويب Deployments
+- **لوحة الإدارة**: `https://elegance-fashion-store.vercel.app/admin`
 
 ---
 
 ## 🔧 استكشاف الأخطاء
 
-### المشكلة: خطأ 500 على Vercel
-**السبب الأكثر شيوعاً**: متغير `APP_KEY` غير مُعرّف، أو إعدادات DB غير صحيحة.
+### المشكلة: خطأ 500 على `/up`
+**السبب**: غالباً مشكلة في اتصال قاعدة البيانات.
 
 **الحل**:
-1. افتح Vercel Dashboard → Project → **Functions** tab
-2. ابحث عن الـ function باسم `api/index.php`
-3. اضغط عليها لرؤية الـ Logs
-4. ابحث عن رسائل الخطأ المحددة
+1. افتح Vercel Dashboard → `elegance-fashion-api` → **Functions**
+2. اضغط على `api/index.php` لرؤية الـ Logs
+3. ابحث عن رسائل مثل:
+   - `SQLSTATE[08006]` → اتصال SSL مرفوض (تأكد أن `DB_SSLMODE=require`)
+   - `password authentication failed` → خطأ في `DB_PASSWORD`
+   - `database "neondb" does not exist` → خطأ في `DB_DATABASE`
 
-### المشكلة: `No application encryption key has been specified`
-أضف `APP_KEY` في Environment Variables وأعد النشر.
-
-### المشكلة: `SQLSTATE[HY000] [2002] Connection refused`
-- تحقق من قيم `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`
-- تأكد أن TiDB يسمح بالاتصال من أي IP (في الإعدادات: IP Allow List = `0.0.0.0/0`)
-- بالنسبة لـ TiDB Serverless، فعّل TLS: في `config/database.php` أضف خيارات MySQL:
-  ```php
-  'mysql' => [
-      // ... باقي الإعدادات
-      'options' => [
-          PDO::MYSQL_ATTR_SSL_CA => '/etc/ssl/certs/ca-certificates.crt',
-      ],
-  ],
-  ```
-
-### المشكلة: الواجهة الأمامية لا تعرض المنتجات
+### المشكلة: المتجر لا يعرض المنتجات
 1. تأكد أن `API_BASE_URL` مضبوط على `https://elegance-fashion-api.vercel.app/api/v1`
-2. افتح Developer Tools → Console، ابحث عن أخطاء CORS
-3. جرّب فتح رابط API مباشرة في المتصفح للتحقق من عمله
+2. افتح Developer Tools → Console → ابحث عن أخطاء CORS
+3. جرّب فتح رابط API مباشرة في المتصفح للتحقق
 
-### المشكلة: الصور لا تظهر
-على Vercel، نظام الملفات للقراءة فقط. الصور المرفوعة تُحفظ في `/tmp` وتُفقد عند كل استدعاء. **الحلول**:
-- استخدم تخزين سحابي للصور: Cloudinary, AWS S3, أو Vercel Blob
-- أو ضع الصور في `public/images/` قبل النشر (ستُخبّأ مع الـ assets)
+### المشكلة: migrations لم تعمل
+- الكود يحفظ "marker file" في `/tmp/storage/migrations_complete.txt` بعد أول تشغيل ناجح
+- إذا فشلت المigrations، لن يُكتب الـ marker وستحاول مرة أخرى في الطلب التالي
+- لإعادة التشغيل: اذهب إلى Vercel Dashboard → **Redeploy** (سيُمحى `/tmp` ويعاد البناء)
 
----
-
-## 📞 بيانات الدخول الافتراضية
-
-- **رابط المتجر**: https://elegance-fashion-store.vercel.app
-- **رابط API**: https://elegance-fashion-api.vercel.app/api/v1
-- **لوحة الإدارة**: https://elegance-fashion-store.vercel.app/admin
-- **البريد**: admin@elegance.com
-- **كلمة المرور**: admin123 (غيّرها فور أول دخول!)
+### المشكلة: `pdo_pgsql` extension missing
+- هذا غير متوقع لأن `vercel-php@0.7.4` يتضمن pdo_pgsql
+- إذا حدث: حدّث `vercel.json` إلى `vercel-php@0.8.x` أو `vercel-php@0.9.x`
 
 ---
 
-## 🎯 ملخص البنية النهائية
+## 📞 الروابط النهائية
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                       المتصفح (المستخدم)                       │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│        elegance-fashion-store.vercel.app                     │
-│        (ecommerce-eshop - Laravel + Blade)                  │
-│        - يعرض المنتجات                                       │
-│        - يدير السلة والجلسات                                 │
-└─────────────────────────┬───────────────────────────────────┘
-                          │ HTTP API calls
-                          │ API_BASE_URL = https://elegance-fashion-api.vercel.app/api/v1
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│        elegance-fashion-api.vercel.app                       │
-│        (ecommerce-shop - Laravel + Sanctum)                 │
-│        - يقدم /api/v1/products, /categories, /cart, ...     │
-│        - يدير لوحة الإدارة                                   │
-└─────────────────────────┬───────────────────────────────────┘
-                          │ MySQL queries (TLS)
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│        TiDB Cloud (MySQL Serverless)                         │
-│        - elegance_shop database                              │
-│        - Users, Products, Categories, Orders, Cart, ...     │
-└─────────────────────────────────────────────────────────────┘
-```
+| الخدمة | الرابط |
+|--------|--------|
+| **API (الخلفية)** | https://elegance-fashion-api.vercel.app |
+| **API Docs** | https://elegance-fashion-api.vercel.app/api/v1/products |
+| **Health Check** | https://elegance-fashion-api.vercel.app/up |
+| **المتجر (الواجهة)** | https://elegance-fashion-store.vercel.app |
+| **لوحة الإدارة** | https://elegance-fashion-store.vercel.app/admin |
+| **Neon Console** | https://console.neon.tech |
+| **Vercel Dashboard** | https://vercel.com/dashboard |
+
+---
+
+## 🎯 ملاحظات مهمة
+
+1. **الـ Migrations تعمل تلقائياً** عند أول زيارة بفضل `RUN_MIGRATIONS_ON_BOOT=true`. لا حاجة لأي أوامر يدوية.
+
+2. **الـ Cold Start بطيء قليلاً** (2-3 ثوانٍ لأول طلب بعد خمول) — هذا طبيعي في Vercel.
+
+3. **بياناتك محفوظة في Neon** (ليست في `/tmp`) — لن تُفقد عند إعادة النشر.
+
+4. **الـ Seeders تعمل مرة واحدة** — يتحقق الكود من جدول `users` قبل التشغيل، فلا تكرار.
+
+5. **الحد المجاني لـ Neon**: 0.5GB تخزين + 100 ساعة نشطة شهرياً — كافٍ لمتجر صغير.
 
 تم النشر بنجاح! 🎉
