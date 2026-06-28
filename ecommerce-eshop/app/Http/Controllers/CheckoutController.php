@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\CartService;
 use App\Services\OrderService;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Order;
 
 class CheckoutController extends Controller
 {
@@ -29,7 +29,7 @@ class CheckoutController extends Controller
 
         $cartTotal = $this->cartService->getTotal();
         $tax = $cartTotal * 0.15;
-        $shipping = 50; // Default shipping cost
+        $shipping = 50;
 
         return view('checkout.index', compact('cart', 'cartTotal', 'tax', 'shipping'));
     }
@@ -50,17 +50,15 @@ class CheckoutController extends Controller
                 'payment_method' => 'required|in:credit_card,debit_card,bank_transfer,cash_on_delivery'
             ]);
 
-            // Add full address
             $validated['shipping_address'] = [
                 'address' => $validated['shipping_address'],
                 'city' => $validated['city'],
                 'postal_code' => $validated['postal_code']
             ];
 
-            $validated['billing_address'] = $validated['billing_address'] ?? $validated['shipping_address'];
+            $validated['billing_address'] = $validated['billing_address'] ?? null;
             $validated['currency_code'] = session('currency', 'SAR');
 
-            // Create order
             $order = $this->orderService->createFromCart(auth()->id(), $validated);
 
             return redirect()->route('checkout.success', $order->id)
@@ -74,9 +72,9 @@ class CheckoutController extends Controller
 
     public function success($orderId)
     {
-        $order = $this->orderService->getOrder($orderId);
+        $order = Order::with('items')->find($orderId);
 
-        if ($order->user_id !== auth()->id()) {
+        if (!$order || $order->user_id !== auth()->id()) {
             abort(403);
         }
 
@@ -88,10 +86,14 @@ class CheckoutController extends Controller
         try {
             $orderId = $request->input('order_id');
             $status = $request->input('status');
+            $order = Order::find($orderId);
 
-            $order = $this->orderService->getOrder($orderId);
+            if (!$order) {
+                return redirect()->route('home')->with('error', __('messages.order_not_found'));
+            }
 
             if ($status === 'success') {
+                $order->update(['payment_status' => 'paid']);
                 return redirect()->route('orders.show', $orderId)
                               ->with('success', __('messages.payment_success'));
             } else {

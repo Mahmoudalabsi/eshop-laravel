@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Services\CategoryService;
 use App\Services\ProductService;
-use App\Services\ApiService;
+use App\Models\Category;
+use App\Models\SizeGuide;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -34,10 +35,6 @@ class CategoryController extends Controller
         $items = $response->get('items') ?? [];
         $meta = (array) $response->get('meta');
 
-        // تحويل المنتجات إلى كائنات لضمان عمل السهم -> في Blade
-        $items = collect($items)->map(fn($item) => (object) $item)->all();
-
-        // Set default pagination values
         $meta = array_merge([
             'total' => count($items),
             'per_page' => 12,
@@ -52,7 +49,6 @@ class CategoryController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        // جلب القسم
         $category = $this->categoryService->find($id)
                     ?? (object)['id' => $id, 'name' => __('messages.category_not_found')];
 
@@ -65,21 +61,31 @@ class CategoryController extends Controller
         return view('admin.categories.index', compact('categories'));
     }
 
-    public function adminEdit($id, ApiService $api)
+    public function adminEdit($id)
     {
         $category = $this->categoryService->find($id);
-        $guidesResponse = $api->get('/size-guides');
-        $guides = $guidesResponse->get('data', []);
-
+        $guides = SizeGuide::all();
         return view('admin.categories.edit', compact('category', 'guides'));
     }
 
-    public function adminUpdate(Request $request, $id, ApiService $api)
+    public function adminUpdate(Request $request, $id)
     {
-        $response = $api->put("/categories/$id", $request->all());
-        if ($response->get('error')) {
-            return back()->with('error', __('messages.category_update_error'));
-        }
-        return redirect()->route('admin.categories.index')->with('success', __('messages.category_updated_success'));
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'status' => 'boolean',
+            'size_guide_id' => 'nullable|integer|exists:size_guides,id',
+        ]);
+
+        $cat = Category::findOrFail($id);
+        $cat->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'status' => $validated['status'] ?? 1,
+            'size_guide_id' => $validated['size_guide_id'] ?? null,
+        ]);
+
+        return redirect()->route('admin.categories.index')
+            ->with('success', __('messages.category_updated_success'));
     }
 }

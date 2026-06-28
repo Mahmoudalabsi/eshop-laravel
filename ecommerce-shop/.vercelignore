@@ -2,6 +2,9 @@
 .vercel/
 
 # Heavy dev-only files we don't want on Vercel
+# vendor/ and node_modules/ are reinstalled during build (see vercel-build.sh)
+vendor/
+node_modules/
 **/tests/
 **/tests/**/*
 **/storage/framework/views/*
@@ -38,3 +41,7 @@ mysql.cnf
 
 # Render config (not used on Vercel)
 render.yaml
+
+# Git history
+.git/
+.gitignore

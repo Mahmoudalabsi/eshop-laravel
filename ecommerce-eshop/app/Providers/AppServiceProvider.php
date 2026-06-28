@@ -12,20 +12,14 @@ use App\Services\LanguageService;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        // Lazy load common data for all views to ensure currency/language is always available
+        // Lazy load common data for all views
         View::composer('*', function ($view) {
             try {
                 $currencies = $this->getCurrenciesLazy();
@@ -39,7 +33,6 @@ class AppServiceProvider extends ServiceProvider
                     $selectedCurrency = (object) $selectedCurrency;
                 }
 
-                // Language handling
                 $selectedLanguageCode = Session::get('locale', Session::get('language', config('app.locale')));
                 $selectedLanguage = collect($languages)->where('code', $selectedLanguageCode)->first()
                     ?? collect($languages)->where('is_default', true)->first()
@@ -49,32 +42,20 @@ class AppServiceProvider extends ServiceProvider
                     $selectedLanguage = (object) $selectedLanguage;
                 }
 
-                // Apply locale to application
                 if ($selectedLanguageCode) {
                     app()->setLocale($selectedLanguageCode);
                 }
 
                 $view->with([
-                    'currencies' => $currencies,
-                    'selectedCurrency' => $selectedCurrency,
-                    'languages' => $languages,
-                    'selectedLanguage' => $selectedLanguage,
-                    'currentLocale' => $selectedLanguageCode, // Ensure variables match Blade
-                    'user' => Session::get('user') ? (object) Session::get('user') : null,
+                    'currencies'        => $currencies,
+                    'selectedCurrency'  => $selectedCurrency,
+                    'languages'         => $languages,
+                    'selectedLanguage'  => $selectedLanguage,
+                    'currentLocale'     => $selectedLanguageCode,
                 ]);
             } catch (\Exception $e) {
-                // Error ignored
+                // Error ignored - fallback values used
             }
-        });
-
-        // Create custom @auth directive for API session
-        Blade::if('auth', function () {
-            return Session::has('api_token') && Session::has('user');
-        });
-
-        // Create custom @guest directive
-        Blade::if('guest', function () {
-            return !Session::has('api_token');
         });
 
         // Custom @price directive
@@ -87,9 +68,6 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 
-    /**
-     * Get currencies with timeout and local fallback
-     */
     private function getCurrenciesLazy()
     {
         try {
@@ -103,9 +81,6 @@ class AppServiceProvider extends ServiceProvider
         }
     }
 
-    /**
-     * Get languages with timeout and local fallback
-     */
     private function getLanguagesLazy()
     {
         try {

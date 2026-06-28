@@ -85,7 +85,7 @@ class ProductController extends Controller
         $query = $request->input('q');
 
         if (!$query) {
-            return $request->ajax() ? response()->json([]) : view('products.search', ['products' => [], 'query' => $query]);
+            return $request->ajax() ? response()->json([]) : redirect()->route('products.index');
         }
 
         $products = $this->productService->search($query, 10);
@@ -94,21 +94,28 @@ class ProductController extends Controller
             return response()->json($products);
         }
 
-        return view('products.search', compact('products', 'query'));
+        // Fall back to products index view with search results
+        $filters = $this->productService->getFilters();
+        return view('products.index', [
+            'products' => new \Illuminate\Pagination\LengthAwarePaginator(
+                $products,
+                $products->count(),
+                12,
+                1,
+                ['path' => $request->url(), 'query' => $request->query()]
+            ),
+            'filters' => $filters,
+        ]);
     }
 
     public function featured()
     {
-        $products = $this->productService->getFeatured(12);
-
-        return view('products.featured', compact('products'));
+        return redirect()->route('products.index', ['sort' => 'top_rated']);
     }
 
     public function onOffer()
     {
-        $products = $this->productService->getOnOffer(20);
-
-        return view('products.on-offer', compact('products'));
+        return redirect()->route('products.index', ['offers' => 1]);
     }
 
     public function submitReview(Request $request, $id)

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\OrderService;
 use App\Services\CartService;
+use App\Models\Order;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -19,16 +20,18 @@ class OrderController extends Controller
 
     public function index()
     {
-        $orders = $this->orderService->getUserOrders(auth()->id());
+        $orders = Order::with('items')
+            ->where('user_id', auth()->id())
+            ->latest()
+            ->get();
 
         return view('orders.index', compact('orders'));
     }
 
     public function show($id)
     {
-        $order = $this->orderService->getOrder($id);
+        $order = Order::with('items')->findOrFail($id);
 
-        // Verify user owns this order
         if ($order->user_id !== auth()->id()) {
             abort(403);
         }
@@ -38,9 +41,8 @@ class OrderController extends Controller
 
     public function invoice($id)
     {
-        $order = $this->orderService->getOrder($id);
+        $order = Order::with('items')->findOrFail($id);
 
-        // Verify user owns this order
         if ($order->user_id !== auth()->id()) {
             abort(403);
         }
@@ -51,7 +53,7 @@ class OrderController extends Controller
     public function cancel(Request $request, $id)
     {
         try {
-            $order = $this->orderService->getOrder($id);
+            $order = Order::findOrFail($id);
 
             if ($order->user_id !== auth()->id()) {
                 abort(403);
@@ -62,7 +64,7 @@ class OrderController extends Controller
                               ->with('error', __('messages.cannot_cancel_order'));
             }
 
-            $this->orderService->updateStatus($id, 'cancelled');
+            $order->update(['status' => 'cancelled']);
 
             return redirect()->back()
                           ->with('success', __('messages.order_cancelled_success'));

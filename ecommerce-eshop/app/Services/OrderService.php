@@ -2,19 +2,21 @@
 
 namespace App\Services;
 
+use App\Models\Order;
+use App\Models\OrderItem;
+use Illuminate\Support\Str;
+
 class OrderService
 {
     protected $cartService;
-    protected $api;
 
-    public function __construct(CartService $cartService, ApiService $api)
+    public function __construct(CartService $cartService)
     {
         $this->cartService = $cartService;
-        $this->api = $api;
     }
 
     /**
-     * Create order from cart
+     * Create order from cart — writes to local DB.
      */
     public function createFromCart(int $userId, array $data): object
     {
@@ -24,122 +26,109 @@ class OrderService
             throw new \Exception(__('messages.empty_cart_error'));
         }
 
-        // Validate stock
         $errors = $this->cartService->validateStock();
-
         if (!empty($errors)) {
             throw new \Exception(implode(', ', $errors));
         }
 
-        // Prepare order payload
-        $orderData = [
-            'user_id' => $userId,
-            'customer_name' => $data['customer_name'],
-            'customer_email' => $data['customer_email'],
-            'customer_phone' => $data['customer_phone'],
-            'shipping_address' => $data['shipping_address'] ?? null,
-            'billing_address' => $data['billing_address'] ?? null,
-            'shipping_cost' => $data['shipping_cost'] ?? 0,
-            'currency_code' => $data['currency_code'] ?? 'SAR',
-            'notes' => $data['notes'] ?? null,
-            'items' => array_map(function ($productId, $item) {
-                return [
-                    'product_id' => $productId,
-                    'product_name' => $item['name'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['discounted_price'] ?? $item['price'],
-                    'attributes' => $item['options'] ?? null
-                ];
-            }, array_keys($cart), $cart)
-        ];
+        $subtotal = $this->cartService->getTotal();
+        $tax = $subtotal * 0.15;
+        $shipping = (float) ($data['shipping_cost'] ?? 50);
+        $total = $subtotal + $tax + $shipping;
 
-        // Send to API
-        try {
-            $response = $this->api->post('/orders', $orderData);
-        } catch (\Exception $e) {
-            throw $e;
+        $order = Order::create([
+            'user_id'         => $userId,
+            'order_number'    => 'ORD-' . strtoupper(Str::random(10)),
+            'status'          => 'pending',
+            'payment_status'  => $data['payment_method'] === 'cash_on_delivery' ? 'unpaid' : 'pending',
+            'subtotal'        => $subtotal,
+            'tax'             => $tax,
+            'shipping_cost'   => $shipping,
+            'total'           => $total,
+            'currency_code'   => $data['currency_code'] ?? 'SAR',
+            'customer_name'   => $data['customer_name'],
+            'customer_email'  => $data['customer_email'],
+            'customer_phone'  => $data['customer_phone'],
+            'shipping_address'=> is_array($data['shipping_address'] ?? null) ? json_encode($data['shipping_address']) : ($data['shipping_address'] ?? null),
+            'billing_address' => is_array($data['billing_address'] ?? null) ? json_encode($data['billing_address']) : ($data['billing_address'] ?? null),
+            'notes'           => $data['notes'] ?? null,
+            'payment_method'  => $data['payment_method'] ?? 'cash_on_delivery',
+        ]);
+
+        foreach ($cart as $productId => $item) {
+            OrderItem::create([
+                'order_id'    => $order->id,
+                'product_id'  => $productId,
+                'product_name'=> $item['name'],
+                'quantity'    => $item['quantity'],
+                'price'       => $item['discounted_price'] ?? $item['price'],
+                'unit_price'  => $item['discounted_price'] ?? $item['price'],
+                'total_price' => ($item['discounted_price'] ?? $item['price']) * $item['quantity'],
+                'size'        => $item['options']['size'] ?? null,
+                'color'       => $item['options']['color'] ?? null,
+                'attributes'  => isset($item['options']) ? json_encode($item['options']) : null,
+            ]);
         }
 
-        if ($response->get('error')) {
-            $errorMsg = $response->get('message', __('messages.order_creation_error'));
-            throw new \Exception($errorMsg);
-        }
+        $this->cartService->clear();
 
-        $responseData = $response->get('data');
-
-        if ($responseData) {
-            $this->cartService->clear();
-        }
-
-        return (object) $responseData;
+        // Return enriched order object for view compatibility
+        $order->load('items');
+        return (object) $order->toArray();
     }
 
-    /**
-     * Get order details
-     */
     public function getOrder($id)
     {
-        $response = $this->api->get("/orders/$id");
-
-        if ($response->get('error')) {
+        $order = Order::with('items')->find($id);
+        if (!$order) {
             throw new \Exception(__('messages.order_not_found'));
         }
-
-        return (object) $response->get('data');
+        return (object) $order->toArray();
     }
 
-    /**
-     * Get user orders
-     */
     public function getUserOrders($userId, $params = [])
     {
-        $response = $this->api->get('/orders', array_merge($params, ['user_id' => $userId]));
-        $data = $response->get('data', []);
+        $perPage = (int) ($params['per_page'] ?? 10);
+        $page = (int) ($params['page'] ?? request()->input('page', 1));
 
-        return collect($data)->map(function ($item) {
-            return (object) $item;
-        });
+        $query = Order::with('items')->where('user_id', $userId)->latest();
+        $total = $query->count();
+        $items = $query->forPage($page, $perPage)->get();
+
+        return collect([
+            'items' => $items->map(fn($o) => (object) $o->toArray()),
+            'meta' => (object) [
+                'total' => $total,
+                'per_page' => $perPage,
+                'current_page' => $page,
+                'last_page' => max(1, (int) ceil($total / $perPage)),
+            ],
+        ]);
     }
 
-    /**
-     * Update order status
-     */
     public function updateStatus($orderId, $status)
     {
-        $response = $this->api->post("/orders/$orderId/status", ['status' => $status]);
-
-        if ($response->get('error')) {
-            throw new \Exception('فشل تحديث الحالة');
+        $order = Order::find($orderId);
+        if (!$order) {
+            throw new \Exception('الطلب غير موجود');
         }
-
-        return (object) $response->get('data');
+        $order->update(['status' => $status]);
+        return (object) $order->toArray();
     }
 
-    /**
-     * Cancel order
-     */
     public function cancel($orderId)
     {
         return $this->updateStatus($orderId, 'cancelled');
     }
 
-    /**
-     * Get order statistics
-     */
     public function getStatistics()
     {
-        $response = $this->api->get('/orders/statistics');
-
-        if ($response->get('error')) {
-            return [
-                'total_orders' => 0,
-                'total_revenue' => 0,
-                'pending_orders' => 0,
-                'delivered_orders' => 0,
-                'avg_order_value' => 0,
-            ];
-        }
-
-        return $response->get('data', []);
+        return [
+            'total_orders'     => Order::count(),
+            'total_revenue'    => Order::where('payment_status', 'paid')->sum('total'),
+            'pending_orders'   => Order::where('status', 'pending')->count(),
+            'delivered_orders' => Order::where('status', 'delivered')->count(),
+            'avg_order_value'  => Order::avg('total') ?? 0,
+        ];
     }
 }

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,20 +16,23 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. إنشاء المستخدم المسؤول (Admin)
-        User::factory()->create([
-            'name' => 'مدير النظام',
-            'email' => 'admin@elegance.com',
-            'role' => 'admin',
-            'password' => bcrypt('admin123'),
-        ]);
+        // 1) Admin user (idempotent)
+        User::updateOrCreate(
+            ['email' => 'admin@elegance.com'],
+            [
+                'name'     => 'مدير النظام',
+                'password' => Hash::make('admin123'),
+                'role'     => 'admin',
+                'status'   => 1,
+            ]
+        );
 
-        // 2. تشغيل سييدر اللغات
+        // 2) Languages
         $this->call([
             LanguageSeeder::class,
         ]);
 
-        // 3. تشغيل سييدر البيانات الموحد للموضة
+        // 3) Categories, products, customers, offers, currencies
         $this->call([
             ShopDataSeeder::class,
         ]);

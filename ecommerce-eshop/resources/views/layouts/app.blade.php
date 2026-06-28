@@ -50,6 +50,8 @@
 
     <link rel="stylesheet" href="/assets/css/style.css">
     @stack('css')
+    <!-- Modern store overlay - loaded LAST to override legacy inline styles -->
+    <link rel="stylesheet" href="/assets/css/modern-store.css">
 </head>
 
 <body class="bg-light text-dark">
@@ -167,8 +169,7 @@
                     <!-- User Icon -->
                     @auth
                         @php
-                            $sessionUser = Session::get('user');
-                            $navProfileImage = data_get($sessionUser, 'profile_image') ?? auth()->user()->profile_image ?? null;
+                            $navProfileImage = auth()->user()->profile_image ?? null;
                             if ($navProfileImage && !str_starts_with($navProfileImage, 'http') && !str_starts_with($navProfileImage, '/')) {
                                 $navProfileImage = '/storage/' . $navProfileImage;
                             }
@@ -204,6 +205,15 @@
                                         href="{{ route('orders.index') }}"
                                         title="{{ __('messages.my_orders') }}"><i class="bi bi-box fs-5"></i>
                                         @lang('messages.my_orders')</a></li>
+
+                                @if (auth()->user() && auth()->user()->role === 'admin')
+                                <li><a class="dropdown-item py-2 px-3 rounded-3 d-flex align-items-center gap-2"
+                                        href="{{ route('admin.dashboard') }}"
+                                        style="background: linear-gradient(135deg, rgba(197,160,89,0.12), transparent); color:#8e6d2f; font-weight:700;"
+                                        title="لوحة التحكم">
+                                        <i class="bi bi-speedometer2 fs-5"></i> لوحة التحكم
+                                    </a></li>
+                                @endif
 
                                 <li>
                                     <hr class="dropdown-divider mx-2">
@@ -491,6 +501,129 @@
                 searchInput.value = '';
                 resultsContainer.innerHTML = '';
             });
+
+            // ====================================================================
+            // Global storefront helpers: addToCartAjax + toggleWishlist
+            // Defined ONCE in the layout (used to be inlined in every product-card)
+            // ====================================================================
+            const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            window.addToCartAjax = function(event, productId) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const btn = event.currentTarget;
+                const originalContent = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+                fetch(`/cart/add/${productId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': CSRF_TOKEN
+                    },
+                    body: JSON.stringify({ quantity: 1 })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+
+                    if (data.success) {
+                        Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2500,
+                            timerProgressBar: true
+                        }).fire({ icon: 'success', title: data.message || 'تمت الإضافة للسلة' });
+
+                        // Update cart badge if present
+                        const cartBadge = document.getElementById('cartBadge');
+                        if (cartBadge) {
+                            cartBadge.classList.remove('d-none');
+                            cartBadge.textContent = data.cart_count || '';
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'خطأ',
+                            text: data.message || 'حدث خطأ غير متوقع'
+                        });
+                    }
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                    console.error('Cart add error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'خطأ',
+                        text: 'تعذر الاتصال بالخادم. حاول مرة أخرى.'
+                    });
+                });
+            };
+
+            window.toggleWishlist = function(event, productId) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const btn = event.currentTarget;
+                const icon = btn.querySelector('i');
+
+                fetch("{{ route('wishlist.toggle') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF_TOKEN
+                    },
+                    body: JSON.stringify({ product_id: productId })
+                })
+                .then(response => {
+                    if (response.status === 401) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'عذراً',
+                            text: 'يرجى تسجيل الدخول لتتمكن من إضافة المنتجات للمفضلة',
+                            confirmButtonText: 'تسجيل الدخول',
+                            showCancelButton: true,
+                            cancelButtonText: 'إلغاء'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = "{{ route('login') }}";
+                            }
+                        });
+                        throw new Error('Unauthorized');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.added) {
+                        icon.classList.remove('bi-heart');
+                        icon.classList.add('bi-heart-fill');
+                        btn.classList.add('active');
+                        Swal.mixin({
+                            toast: true, position: 'top-end',
+                            showConfirmButton: false, timer: 2000, timerProgressBar: true
+                        }).fire({ icon: 'success', title: 'تمت الإضافة للمفضلة' });
+                    } else {
+                        icon.classList.remove('bi-heart-fill');
+                        icon.classList.add('bi-heart');
+                        btn.classList.remove('active');
+                        Swal.mixin({
+                            toast: true, position: 'top-end',
+                            showConfirmButton: false, timer: 2000, timerProgressBar: true
+                        }).fire({ icon: 'info', title: 'تمت الإزالة من المفضلة' });
+                    }
+                })
+                .catch(error => {
+                    if (error.message !== 'Unauthorized') {
+                        console.error('Wishlist toggle error:', error);
+                    }
+                });
+            };
         });
     </script>
 

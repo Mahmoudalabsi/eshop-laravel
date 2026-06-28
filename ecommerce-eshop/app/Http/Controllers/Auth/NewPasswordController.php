@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Services\ApiService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -13,35 +12,28 @@ use Illuminate\Validation\Rules;
 
 class NewPasswordController extends Controller
 {
-    protected $api;
-
-    public function __construct(ApiService $api)
-    {
-        $this->api = $api;
-    }
-
     public function store(Request $request)
     {
         $request->validate([
-            'token' => ['required'],
-            'email' => ['required', 'email'],
+            'token'    => ['required'],
+            'email'    => ['required', 'email'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        // Call the dashboard API to reset password
-        $response = $this->api->post('/reset-password', [
-            'token' => $request->token,
-            'email' => $request->email,
-            'password' => $request->password,
-            'password_confirmation' => $request->password_confirmation,
-        ]);
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user) use ($request) {
+                $user->forceFill([
+                    'password'       => Hash::make($request->password),
+                    'remember_token' => Str::random(60),
+                ])->save();
 
-        if ($response->get('status') === 'success') {
-            return redirect()->route('login')->with('status', 'تم إعادة تعيين كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول');
-        }
+                event(new PasswordReset($user));
+            }
+        );
 
-        return back()->withErrors([
-            'email' => $response->get('message', 'حدث خطأ أثناء إعادة تعيين كلمة المرور'),
-        ]);
+        return $status === Password::PASSWORD_RESET
+            ? redirect()->route('login')->with('status', __($status))
+            : back()->withErrors(['email' => __($status)]);
     }
 }

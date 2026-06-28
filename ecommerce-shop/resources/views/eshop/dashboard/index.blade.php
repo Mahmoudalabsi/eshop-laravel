@@ -6,85 +6,108 @@
 @section("title","الرئيسية")
 
 @section('content')
-    <div class="pt-3 pb-2 mb-3 border-bottom text-end">
-        <h1 class="h2">نظرة عامة على المتجر</h1>
+    <div class="pt-3 pb-2 mb-3 border-bottom text-end d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h1 class="h2">نظرة عامة على المتجر</h1>
+            <p class="text-muted mb-0 small">مرحباً بك، إليك ملخص نشاط متجرك اليوم</p>
+        </div>
+        <div class="dashboard-date-badge">
+            <i class="bi bi-calendar3"></i>
+            <span>{{ \Carbon\Carbon::now()->locale('ar')->translatedFormat('l، d F Y') }}</span>
+        </div>
     </div>
 
     <div class="row text-end">
         {{-- بطاقة الأقسام --}}
-        <div class="col-md-3 mb-4">
-            <div class="card bg-soft-blue shadow-sm">
+        <div class="col-md-6 col-xl-3 mb-4">
+            <div class="card bg-soft-blue shadow-sm h-100">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <h6 class="card-title mb-1">إجمالي الأقسام</h6>
                             <h2 class="mb-0 fw-bold counter" data-target="{{ $categoriesCount }}">0</h2>
                         </div>
-                        <i class="bi bi-tags-fill fs-1 opacity-25"></i>
+                        <div class="stat-icon-wrap bg-soft-blue-icon">
+                            <i class="bi bi-tags-fill"></i>
+                        </div>
                     </div>
                     <a href="{{ route('categories.index') }}"
-                        class="text-reset text-decoration-none mt-3 d-block small opacity-75">مشاهدة التفاصيل ←</a>
+                        class="stat-link mt-3 d-block small">
+                        مشاهدة التفاصيل <i class="bi bi-arrow-left"></i>
+                    </a>
                 </div>
             </div>
         </div>
 
         {{-- بطاقة المنتجات --}}
-        <div class="col-md-3 mb-4">
-            <div class="card bg-soft-green shadow-sm">
+        <div class="col-md-6 col-xl-3 mb-4">
+            <div class="card bg-soft-green shadow-sm h-100">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <h6 class="card-title mb-1">إجمالي المنتجات</h6>
                             <h2 class="mb-0 fw-bold counter" data-target="{{ $productsCount }}">0</h2>
                         </div>
-                        <i class="bi bi-box-seam fs-1 opacity-25"></i>
+                        <div class="stat-icon-wrap bg-soft-green-icon">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
                     </div>
                     <a href="{{ route('products.index') }}"
-                        class="text-reset text-decoration-none mt-3 d-block small opacity-75">مشاهدة التفاصيل ←</a>
+                        class="stat-link mt-3 d-block small">
+                        مشاهدة التفاصيل <i class="bi bi-arrow-left"></i>
+                    </a>
                 </div>
             </div>
         </div>
 
         {{-- بطاقة المستخدمين --}}
-        <div class="col-md-3 mb-4">
-            <div class="card bg-soft-orange shadow-sm">
+        <div class="col-md-6 col-xl-3 mb-4">
+            <div class="card bg-soft-orange shadow-sm h-100">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <h6 class="card-title mb-1">الأعضاء</h6>
                             <h2 class="mb-0 fw-bold counter" data-target="{{ $usersCount }}">0</h2>
                         </div>
-                        <i class="bi bi-people-fill fs-1 opacity-25"></i>
+                        <div class="stat-icon-wrap bg-soft-orange-icon">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
                     </div>
                     <a href="{{ route('users.index') }}"
-                        class="text-reset text-decoration-none mt-3 d-block small opacity-75">إدارة الأعضاء ←</a>
+                        class="stat-link mt-3 d-block small">
+                        إدارة الأعضاء <i class="bi bi-arrow-left"></i>
+                    </a>
                 </div>
             </div>
         </div>
 
         {{-- بطاقة إجمالي الطلبات --}}
-        <div class="col-md-3 mb-4">
-            <div class="card bg-soft-cyan shadow-sm">
+        <div class="col-md-6 col-xl-3 mb-4">
+            <div class="card bg-soft-cyan shadow-sm h-100">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <h6 class="card-title mb-1">إجمالي الطلبات</h6>
                             <h2 class="mb-0 fw-bold counter" data-target="{{ $ordersCount }}">0</h2>
                         </div>
-                        <i class="bi bi-cart-check-fill fs-1 opacity-25"></i>
+                        <div class="stat-icon-wrap bg-soft-cyan-icon">
+                            <i class="bi bi-cart-check-fill"></i>
+                        </div>
                     </div>
                     <a href="{{ route('orders.index') }}"
-                        class="text-reset text-decoration-none mt-3 d-block small opacity-75">مشاهدة الطلبات ←</a>
+                        class="stat-link mt-3 d-block small">
+                        مشاهدة الطلبات <i class="bi bi-arrow-left"></i>
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row mt-4 text-end">
+    <div class="row mt-2 text-end">
         <div class="col-md-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header fw-bold d-flex justify-content-between align-items-center py-3">
-                    <h4>آخر الطلبات المستلمة</h4>
+                    <h4 class="mb-0 fs-5"><i class="bi bi-clock-history text-gold me-2"></i> آخر الطلبات المستلمة</h4>
                     <a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary px-3">عرض الكل</a>
                 </div>
                 <div class="card-body p-0">

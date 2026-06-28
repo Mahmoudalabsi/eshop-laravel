@@ -2,66 +2,37 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
 use App\Models\Category;
 
 class CategoryService
 {
-    protected $api;
-
-    public function __construct(ApiService $api)
-    {
-        $this->api = $api;
-    }
-
     /**
-     * جلب جميع الأقسام وتحويلها لكائنات
+     * Get all active categories with subcategories.
      */
     public function getAll()
     {
-        try {
-            $response = $this->api->get('/categories');
-            $data = $response->get('data') ?? $response->all();
-
-            // إذا لم تكن البيانات مصفوفة قائمة، نعتبرها فارغة
-            if (!is_array($data) || !array_is_list($data)) {
-                $data = [];
-            }
-        } catch (\Exception $e) {
-            $data = [];
-        }
-
-        // تحويل البيانات المستخرجة إلى Collection من الكائنات
-        $collection = collect($data)->map(fn($item) => (object) $item);
-
-        // إذا كان الـ API فارغاً، نسحب من قاعدة البيانات المحلية (Fallback)
-        if ($collection->isEmpty()) {
-            return Category::all()->map(fn($c) => (object) $c->toArray());
-        }
-
-        return $collection;
+        return Category::with(['subcategories' => function ($q) {
+            $q->where('status', 1);
+        }])
+        ->where('status', 1)
+        ->orderBy('name')
+        ->get()
+        ->map(fn($c) => (object) $c->toArray());
     }
 
     /**
-     * جلب قسم واحد بواسطة المعرف
+     * Find a category by ID with subcategories.
      */
     public function find($id)
     {
-        try {
-            $response = $this->api->get("/categories/$id");
-            $data = $response->get('data') ?? $response->all();
+        $cat = Category::with(['subcategories' => function ($q) {
+            $q->where('status', 1);
+        }])->find($id);
 
-            if ($data) {
-                return (object) $data;
-            }
-        } catch (\Exception $e) {
-            // Error ignored
+        if (!$cat) {
+            return null;
         }
 
-        // البحث المحلي في حال فشل الـ API
-        $localCategory = Category::find($id);
-
-        // تحويل الموديل المحلي إلى كائن يدوي لضمان توافق Blade
-        return $localCategory ? (object) $localCategory->toArray() : null;
+        return (object) $cat->toArray();
     }
 }

@@ -3,68 +3,52 @@
 namespace App\Http\Controllers;
 
 use App\Services\LanguageService;
-use App\Services\ApiService;
 use App\Models\Language;
 use Illuminate\Http\Request;
 
 class LanguageController extends Controller
 {
     protected $languageService;
-    protected $api;
 
-    public function __construct(LanguageService $languageService, ApiService $api)
+    public function __construct(LanguageService $languageService)
     {
         $this->languageService = $languageService;
-        $this->api = $api;
     }
 
-    /**
-     * عرض صفحة إدارة اللغات
-     */
     public function index()
     {
         $languages = $this->languageService->getAll();
         return view('admin.languages.index', compact('languages'));
     }
 
-    /**
-     * الحصول على جميع اللغات بصيغة JSON
-     */
     public function getLanguagesJson()
     {
-        $languages = $this->languageService->getAll();
-        return response()->json($languages);
+        return response()->json($this->languageService->getAll());
     }
 
-    /**
-     * إضافة لغة جديدة
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|size:2',
+            'code' => 'required|string|size:2|unique:languages,code',
             'flag' => 'nullable|string',
             'direction' => 'required|in:ltr,rtl',
             'is_default' => 'boolean',
+            'status' => 'boolean',
         ]);
 
-        try {
-            $response = $this->api->post('/languages', $validated);
+        $lang = Language::create([
+            'name' => $validated['name'],
+            'code' => $validated['code'],
+            'flag' => $validated['flag'] ?? null,
+            'direction' => $validated['direction'],
+            'is_default' => $validated['is_default'] ?? false,
+            'status' => $validated['status'] ?? true,
+        ]);
 
-            if ($response->get('error')) {
-                return response()->json(['message' => __('messages.language_add_failed')], 422);
-            }
-
-            return response()->json(['message' => __('messages.language_added_success'), 'data' => $response->get('data')]);
-        } catch (\Exception $e) {
-            return response()->json(['message' => __('messages.error_occurred') . $e->getMessage()], 500);
-        }
+        return response()->json(['message' => 'تمت إضافة اللغة بنجاح', 'data' => $lang]);
     }
 
-    /**
-     * تحديث لغة
-     */
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
@@ -73,78 +57,51 @@ class LanguageController extends Controller
             'flag' => 'nullable|string',
             'direction' => 'required|in:ltr,rtl',
             'is_default' => 'boolean',
+            'status' => 'boolean',
         ]);
 
-        try {
-            $response = $this->api->post("/languages/$id", $validated);
+        $lang = Language::findOrFail($id);
+        $lang->update([
+            'name' => $validated['name'],
+            'code' => $validated['code'],
+            'flag' => $validated['flag'] ?? null,
+            'direction' => $validated['direction'],
+            'is_default' => $validated['is_default'] ?? false,
+            'status' => $validated['status'] ?? true,
+        ]);
 
-            if ($response->get('error')) {
-                return response()->json(['message' => __('messages.language_update_failed')], 422);
-            }
-
-            return response()->json(['message' => __('messages.language_updated_success'), 'data' => $response->get('data')]);
-        } catch (\Exception $e) {
-            return response()->json(['message' => __('messages.error_occurred') . $e->getMessage()], 500);
-        }
+        return response()->json(['message' => 'تم تحديث اللغة بنجاح', 'data' => $lang]);
     }
 
-    /**
-     * تحديث حالة اللغة (تفعيل/تعطيل)
-     */
     public function updateStatus(Request $request, $id)
     {
-        try {
-            $response = $this->api->post("/languages/$id/status",
-                ['status' => $request->get('status', false)]
-            );
-
-            if ($response->get('error')) {
-                return response()->json(['message' => __('messages.status_update_failed')], 422);
-            }
-
-            return response()->json(['message' => __('messages.status_updated_success')]);
-        } catch (\Exception $e) {
-            return response()->json(['message' => __('messages.error_occurred') . $e->getMessage()], 500);
-        }
+        $lang = Language::findOrFail($id);
+        $lang->update(['status' => $request->boolean('status')]);
+        return response()->json(['message' => 'تم تحديث الحالة بنجاح']);
     }
 
-    /**
-     * حذف لغة
-     */
     public function destroy($id)
     {
-        try {
-            $language = $this->languageService->find($id);
-
-            if ($language && $language->is_default) {
-                return response()->json(['message' => __('messages.cannot_delete_default_language')], 422);
-            }
-
-            $response = $this->api->post("/languages/$id/delete");
-            return response()->json(['message' => __('messages.language_deleted_success')]);
-        } catch (\Exception $e) {
-            return response()->json(['message' => __('messages.error_occurred') . $e->getMessage()], 500);
+        $lang = Language::findOrFail($id);
+        if ($lang->is_default) {
+            return response()->json(['message' => 'لا يمكن حذف اللغة الافتراضية'], 422);
         }
+        $lang->delete();
+        return response()->json(['message' => 'تم حذف اللغة بنجاح']);
     }
 
-    /**
-     * تعيين اللغة الحالية
-     */
     public function setLanguage($code)
     {
-        // Try to find language via Service (API) first
         $language = $this->languageService->findByCode($code);
 
-        // Fallback for default languages if API fails or returns nothing
         if (!$language && in_array($code, ['ar', 'en'])) {
             $language = (object) ['code' => $code, 'direction' => $code === 'ar' ? 'rtl' : 'ltr'];
         }
 
         if ($language) {
             session()->put('locale', $code);
-            session()->put('language', $code); // Backward compatibility
+            session()->put('language', $code);
             session()->put('language_direction', $language->direction ?? 'ltr');
-
             app()->setLocale($code);
         }
 

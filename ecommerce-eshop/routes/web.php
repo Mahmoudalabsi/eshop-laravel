@@ -14,12 +14,16 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\SetupController;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
 */
+
+// Setup route - Vercel-safe data initialization (no artisan, no seeder)
+Route::get('/setup', [SetupController::class, 'index'])->name('setup');
 
 // Home and Browse Routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -84,6 +88,10 @@ Route::middleware(['auth'])->group(function () {
 
 // Admin Routes
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    // Admin Dashboard
+    Route::get('/', [\App\Http\Controllers\AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [\App\Http\Controllers\AdminDashboardController::class, 'index'])->name('dashboard.alt');
+
     // Languages Management
     Route::get('/languages', [LanguageController::class, 'index'])->name('languages.index');
     Route::get('/languages-json', [LanguageController::class, 'getLanguagesJson'])->name('languages.json');
