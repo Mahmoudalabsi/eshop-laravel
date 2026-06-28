@@ -7,6 +7,8 @@
  *   via artisan cache commands at build time; we keep them under /tmp during
  *   build so they don't end up in the deployment artifact, then Laravel
  *   falls back to compiling them on-demand into /tmp on first request.
+ * - If RUN_MIGRATIONS_ON_BOOT=true, runs migrate --seed on first cold start
+ *   (idempotent: uses migrations table + firstOrCreate for seeders).
  */
 
 use Illuminate\Contracts\Http\Kernel;
@@ -38,7 +40,47 @@ $app = require_once $basePath . '/bootstrap/app.php';
 // 5. Override storage path to /tmp (writable on serverless)
 $app->useStoragePath($storageRoot);
 
-// 6. Handle request
+// 6. Run migrations on first cold start (idempotent via marker file)
+if (getenv('RUN_MIGRATIONS_ON_BOOT') === 'true') {
+    $markerFile = $storageRoot . '/migrations_complete.txt';
+
+    if (!file_exists($markerFile)) {
+        try {
+            // Boot a kernel instance so we have access to Artisan
+            $kernel = $app->make(\Illuminate\Contracts\Console\Kernel::class);
+            $kernel->bootstrap();
+
+            // Run migrations (force = no confirmation prompt)
+            $exitCode = $kernel->call('migrate', ['--force' => true]);
+
+            // Run seeders only if users table is empty (idempotent)
+            try {
+                $db = $app->make('db');
+                $userCount = $db->table('users')->count();
+                if ($userCount === 0) {
+                    $kernel->call('db:seed', ['--force' => true]);
+                }
+            } catch (\Throwable $e) {
+                // Seeding failed — not fatal, continue serving requests
+                error_log('Seed failed: ' . $e->getMessage());
+            }
+
+            // Write marker file so we don't re-run on every cold start
+            @file_put_contents(
+                $markerFile,
+                json_encode([
+                    'migrated_at' => date('c'),
+                    'exit_code'   => $exitCode,
+                ])
+            );
+        } catch (\Throwable $e) {
+            // Migration failed — log and continue (DB might be misconfigured)
+            error_log('Migration failed: ' . $e->getMessage());
+        }
+    }
+}
+
+// 7. Handle request
 $kernel = $app->make(Kernel::class);
 
 $response = $kernel->handle(

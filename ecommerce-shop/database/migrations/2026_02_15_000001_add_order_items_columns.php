@@ -13,16 +13,16 @@ return new class extends Migration
     {
         Schema::table('order_items', function (Blueprint $table) {
             if (!Schema::hasColumn('order_items', 'product_name')) {
-                $table->string('product_name')->nullable()->after('product_id');
+                $table->string('product_name')->nullable();
             }
             if (!Schema::hasColumn('order_items', 'unit_price')) {
-                $table->decimal('unit_price', 10, 2)->nullable()->after('price');
+                $table->decimal('unit_price', 10, 2)->nullable();
             }
             if (!Schema::hasColumn('order_items', 'total_price')) {
-                $table->decimal('total_price', 10, 2)->nullable()->after('unit_price');
+                $table->decimal('total_price', 10, 2)->nullable();
             }
             if (!Schema::hasColumn('order_items', 'attributes')) {
-                $table->json('attributes')->nullable()->after('color');
+                $table->jsonb('attributes')->nullable();
             }
         });
     }

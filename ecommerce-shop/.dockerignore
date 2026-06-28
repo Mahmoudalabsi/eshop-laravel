@@ -1,21 +1,54 @@
-vendor/
-node_modules/
+# Build artifacts
+.vercel/
 .git/
 .gitignore
+
+# Local env files (env vars are injected at runtime by Fly)
 .env
 .env.local
-.env.*.local
-storage/logs/*.log
-storage/framework/cache/data/*
-storage/framework/sessions/*
-storage/framework/views/*
-!storage/framework/cache/data/.gitignore
-!storage/framework/sessions/.gitignore
-!storage/framework/views/.gitignore
+.env.production
+.env.production.local
+.env.testing
+
+# Local-only SQLite databases
+*.sqlite
+*.sqlite3
+ecomerce-shop
+
+# Tests
 tests/
+**/tests/
+
+# Storage runtime (will be created at startup)
+storage/framework/views/*
+storage/framework/sessions/*
+storage/framework/cache/data/*
+storage/logs/*.log
+!storage/app/public/.gitkeep
+
+# Documentation (not needed in image)
 *.md
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-.vercel/
+
+# Render/Vercel config (not used on Fly)
+render.yaml
+vercel.json
+vercel-build.sh
+.vercelignore
+Dockerfile.mysql
+mysql.cnf
+
+# Debug / test scripts
+test_*.php
+debug_*.php
+view_order_logs.php
+check_*.php
+fix_admin.php
+debug_auth.php
+test_hash.php
+test_order_creation.php
+
+# Node modules (rebuilt in Docker)
+node_modules/
+
+# Fly.io local artifacts
+fly.toml.bak

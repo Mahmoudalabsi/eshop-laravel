@@ -21,8 +21,11 @@ if [ -z "$APP_KEY" ]; then
 fi
 
 echo "==> [5/5] Laravel cache: config + routes + events + views (write to /tmp so they aren't baked into lambda)"
-# Bootstrap cache directory must exist before artisan commands run
 mkdir -p /tmp/bootstrap/cache
+
+# Verify required PHP extensions are available on Vercel runtime
+echo "==> Verifying PHP extensions (pdo_pgsql is required for Neon)..."
+php -m | grep -E "pdo_pgsql|openssl|mbstring|tokenizer|xml|ctype|json|bcmath|fileinfo|curl" || true
 
 # Write Laravel caches to /tmp so they do not bloat the lambda deployment
 php artisan config:cache --no-ansi

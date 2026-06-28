@@ -11,8 +11,8 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('order_items', function (Blueprint $table) {
-            $table->string('size')->nullable()->after('price');
-            $table->string('color')->after('size')->nullable();
+            $table->string('size')->nullable();
+            $table->string('color')->nullable();
         });
     }
 

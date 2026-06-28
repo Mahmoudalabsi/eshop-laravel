@@ -14,37 +14,37 @@ return new class extends Migration
         Schema::table('orders', function (Blueprint $table) {
             // Add new order columns if they don't exist
             if (!Schema::hasColumn('orders', 'order_number')) {
-                $table->string('order_number')->nullable()->after('user_id');
+                $table->string('order_number')->nullable();
             }
             if (!Schema::hasColumn('orders', 'customer_email')) {
-                $table->string('customer_email')->nullable()->after('customer_name');
+                $table->string('customer_email')->nullable();
             }
             if (!Schema::hasColumn('orders', 'customer_phone')) {
-                $table->string('customer_phone')->nullable()->after('phone');
+                $table->string('customer_phone')->nullable();
             }
             if (!Schema::hasColumn('orders', 'shipping_address')) {
-                $table->json('shipping_address')->nullable()->after('address');
+                $table->jsonb('shipping_address')->nullable();
             }
             if (!Schema::hasColumn('orders', 'billing_address')) {
-                $table->json('billing_address')->nullable()->after('shipping_address');
+                $table->jsonb('billing_address')->nullable();
             }
             if (!Schema::hasColumn('orders', 'subtotal')) {
-                $table->decimal('subtotal', 10, 2)->default(0)->after('total_price');
+                $table->decimal('subtotal', 10, 2)->default(0);
             }
             if (!Schema::hasColumn('orders', 'shipping_cost')) {
-                $table->decimal('shipping_cost', 10, 2)->default(0)->after('subtotal');
+                $table->decimal('shipping_cost', 10, 2)->default(0);
             }
             if (!Schema::hasColumn('orders', 'total')) {
-                $table->decimal('total', 10, 2)->nullable()->after('shipping_cost');
+                $table->decimal('total', 10, 2)->nullable();
             }
             if (!Schema::hasColumn('orders', 'currency_code')) {
-                $table->string('currency_code', 10)->default('SAR')->after('total');
+                $table->string('currency_code', 10)->default('SAR');
             }
             if (!Schema::hasColumn('orders', 'payment_status')) {
-                $table->string('payment_status')->default('pending')->after('status');
+                $table->string('payment_status')->default('pending');
             }
             if (!Schema::hasColumn('orders', 'notes')) {
-                $table->text('notes')->nullable()->after('payment_status');
+                $table->text('notes')->nullable();
             }
         });
     }

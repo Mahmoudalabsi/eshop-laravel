@@ -34,13 +34,13 @@
     "FILESYSTEM_DISK": "local",
     "LOG_CHANNEL": "stderr",
     "LOG_LEVEL": "warning",
-    "DB_CONNECTION": "mysql",
-    "MYSQL_ATTR_SSL_CA": "/etc/ssl/certs/ca-certificates.crt",
+    "DB_CONNECTION": "pgsql",
     "SANCTUM_STATEFUL_DOMAINS": "*",
     "SESSION_DOMAIN": "",
     "VIEW_COMPILED_PATH": "/tmp/storage/framework/views",
     "APP_CONFIG_CACHE": "/tmp/config.php",
     "APP_EVENTS_CACHE": "/tmp/events.php",
-    "APP_ROUTES_CACHE": "/tmp/routes.php"
+    "APP_ROUTES_CACHE": "/tmp/routes.php",
+    "RUN_MIGRATIONS_ON_BOOT": "true"
   }
 }

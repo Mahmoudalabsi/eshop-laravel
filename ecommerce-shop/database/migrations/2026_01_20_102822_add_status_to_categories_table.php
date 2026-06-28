@@ -11,7 +11,7 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('categories', function (Blueprint $table) {
-            $table->tinyInteger('status')->default(1)->after('description'); // 1 نشط، 0 معطل
+            $table->smallInteger('status')->default(1); // 1 نشط، 0 معطل
         });
     }
 

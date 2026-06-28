@@ -1,0 +1,47 @@
+# fly.toml for ecommerce-eshop (Frontend - Store consuming backend API)
+# App name: elegance-fashion-store
+# URL: https://elegance-fashion-store.fly.dev
+
+app = "elegance-fashion-store"
+primary_region = "fra"
+kill_signal = "SIGINT"
+kill_timeout = 5
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  APP_NAME = "Elegance Fashion Store"
+  APP_ENV = "production"
+  APP_DEBUG = "false"
+  APP_LOCALE = "ar"
+  APP_FALLBACK_LOCALE = "en"
+  APP_MAINTENANCE_DRIVER = "database"
+  SESSION_DRIVER = "cookie"
+  CACHE_STORE = "database"
+  QUEUE_CONNECTION = "database"
+  FILESYSTEM_DISK = "local"
+  LOG_CHANNEL = "stderr"
+  LOG_LEVEL = "warning"
+  DB_CONNECTION = "mysql"
+  API_BASE_URL = "https://elegance-fashion-api.fly.dev/api/v1"
+  API_TIMEOUT = "15"
+  API_RETRIES = "2"
+  SANCTUM_STATEFUL_DOMAINS = "*"
+  SESSION_DOMAIN = ""
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[http_service.concurrency]
+  type = "requests"
+  hard_limit = 100
+  soft_limit = 50
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256_mb"

@@ -11,9 +11,9 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->string('customer_name')->after('user_id')->nullable();
-            $table->string('phone')->after('customer_name')->nullable();
-            $table->text('address')->after('phone')->nullable();
+            $table->string('customer_name')->nullable();
+            $table->string('phone')->nullable();
+            $table->text('address')->nullable();
         });
     }
 
