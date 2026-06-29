@@ -23,10 +23,13 @@ use Illuminate\Support\Facades\DB;
 /**
  * Class SetupController
  *
- * Initializes the storefront database WITHOUT relying on `php artisan db:seed`.
+ * Initializes the admin/backend database WITHOUT relying on `php artisan db:seed`.
  * This is the Vercel-safe path: an HTTP request to /setup (or an automatic
  * call from api/index.php on cold start) populates the database using
  * updateOrCreate so it is fully idempotent.
+ *
+ * Mirrors the same data set as the storefront (ecommerce-eshop) SetupController
+ * so both apps stay in sync when they share the same Neon PostgreSQL database.
  */
 class SetupController extends Controller
 {
@@ -38,19 +41,15 @@ class SetupController extends Controller
         $key = config('app.key');
         $provided = $request->query('key', $request->header('X-Setup-Key'));
 
-        // Allow if no APP_KEY is set (local dev), or if provided key matches
         if ($key && $provided && hash_equals($key, $provided)) {
             return $this->run();
         }
         if ($key && $provided && !hash_equals($key, $provided)) {
             return response()->json(['error' => 'Invalid setup key'], 403);
         }
-        // For local dev with no key set, allow direct access
         if (!$key) {
             return $this->run();
         }
-        // For Vercel (key set, no key provided) - allow if user is admin or skip
-        // We still allow it because api/index.php already gates this
         return $this->run();
     }
 
@@ -79,7 +78,7 @@ class SetupController extends Controller
 
             return response()->json([
                 'success'  => true,
-                'message'  => 'تم تهيئة المتجر بنجاح',
+                'message'  => 'تم تهيئة لوحة التحكم بنجاح',
                 'log'      => $log,
                 'admin'    => [
                     'email'    => 'admin@elegance.com',
@@ -96,6 +95,7 @@ class SetupController extends Controller
                     'currencies'  => Currency::count(),
                     'languages'   => Language::count(),
                     'offers'      => Offer::count(),
+                    'orders'      => Order::count(),
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -141,6 +141,8 @@ class SetupController extends Controller
             if ($driver === 'sqlite') {
                 DB::statement('PRAGMA foreign_keys = OFF');
             }
+            // For pgsql, FK constraints are respected but seeding order is correct
+            // so we don't need to disable them.
         } catch (\Throwable $e) {}
     }
 
@@ -421,25 +423,30 @@ class SetupController extends Controller
 
         $log[] = 'Catalog: ' . count($allProducts) . ' products in ' . Category::count() . ' categories';
 
-        // Sample orders (only if none exist)
+        // Sample orders (only if none exist) — kept in sync with the storefront
+        // SetupController so both apps produce identical order rows when they
+        // share the same Neon PostgreSQL database on Vercel.
         if (Order::count() === 0 && count($allProducts) > 0) {
             foreach ($customers->take(4) as $user) {
                 $order = Order::create([
-                    'user_id'         => $user->id,
-                    'order_number'    => 'ORD-' . strtoupper(Str::random(8)),
-                    'customer_name'   => $user->name,
-                    'customer_email'  => $user->email,
-                    'customer_phone'  => '05' . rand(10000000, 99999999),
-                    'shipping_address'=> json_encode(['address' => 'حي الياسمين، الرياض', 'city' => 'الرياض', 'postal_code' => '12345']),
-                    'billing_address' => json_encode(['address' => 'حي الياسمين، الرياض', 'city' => 'الرياض', 'postal_code' => '12345']),
-                    'subtotal'        => 0,
-                    'tax'             => 0,
-                    'shipping_cost'   => 50,
-                    'total'           => 0,
-                    'currency_code'   => 'SAR',
-                    'status'          => ['pending', 'processing', 'delivered', 'completed'][rand(0, 3)],
-                    'payment_status'  => rand(0, 1) ? 'paid' : 'pending',
-                    'payment_method'  => 'cash_on_delivery',
+                    'user_id'          => $user->id,
+                    'order_number'     => 'ORD-' . strtoupper(Str::random(8)),
+                    'customer_name'    => $user->name,
+                    'customer_email'   => $user->email,
+                    'customer_phone'   => '05' . rand(10000000, 99999999),
+                    'phone'            => '05' . rand(10000000, 99999999),
+                    'address'          => 'المملكة العربية السعودية، الرياض، حي الياسمين، شارع الأمير محمد بن سلمان',
+                    'shipping_address' => json_encode(['address' => 'حي الياسمين، الرياض', 'city' => 'الرياض', 'postal_code' => '12345']),
+                    'billing_address'  => json_encode(['address' => 'حي الياسمين، الرياض', 'city' => 'الرياض', 'postal_code' => '12345']),
+                    'subtotal'         => 0,
+                    'tax'              => 0,
+                    'shipping_cost'    => 50,
+                    'total'            => 0,
+                    'total_price'      => 0,
+                    'currency_code'    => 'SAR',
+                    'status'           => ['pending', 'processing', 'delivered', 'completed'][rand(0, 3)],
+                    'payment_status'   => rand(0, 1) ? 'paid' : 'pending',
+                    'payment_method'   => 'cash_on_delivery',
                 ]);
 
                 $total = 0;
@@ -455,14 +462,16 @@ class SetupController extends Controller
                         'price'        => $price,
                         'unit_price'   => $price,
                         'total_price'  => $price * $qty,
+                        'sku'          => $prod->sku ?? strtoupper(substr(md5($prod->name), 0, 8)),
                     ]);
                     $total += $price * $qty;
                 }
                 $tax = $total * 0.15;
                 $order->update([
-                    'subtotal' => $total,
-                    'tax'      => $tax,
-                    'total'    => $total + $tax + 50,
+                    'subtotal'    => $total,
+                    'tax'         => $tax,
+                    'total'       => $total + $tax + 50,
+                    'total_price' => $total + $tax + 50,
                 ]);
             }
             $log[] = 'Sample orders: ' . Order::count();

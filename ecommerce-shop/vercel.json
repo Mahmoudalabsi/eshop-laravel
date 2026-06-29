@@ -34,8 +34,6 @@
     "FILESYSTEM_DISK": "local",
     "LOG_CHANNEL": "stderr",
     "LOG_LEVEL": "warning",
-    "DB_CONNECTION": "sqlite",
-    "DB_DATABASE": "/tmp/database.sqlite",
     "SANCTUM_STATEFUL_DOMAINS": "*",
     "SESSION_DOMAIN": "",
     "VIEW_COMPILED_PATH": "/tmp/storage/framework/views",

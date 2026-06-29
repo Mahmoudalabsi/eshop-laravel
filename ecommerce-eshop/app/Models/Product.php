@@ -28,16 +28,18 @@ class Product extends Model
         'dimensions',
         'is_featured',
         'is_on_offer',
-        'discount_percentage'
+        'discount_percentage',
+        'offer_expires_at',
     ];
 
     protected $casts = [
-        'is_featured' => 'boolean',
-        'is_on_offer' => 'boolean',
-        'dimensions' => 'array',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
+        'is_featured'      => 'boolean',
+        'is_on_offer'      => 'boolean',
+        'dimensions'       => 'array',
+        'offer_expires_at' => 'datetime',
+        'created_at'       => 'datetime',
+        'updated_at'       => 'datetime',
+        'deleted_at'       => 'datetime',
     ];
 
     // Relationships
@@ -109,12 +111,25 @@ class Product extends Model
     }
 
     // Accessors
+    /**
+     * The current selling price of the product.
+     *
+     * NOTE: In this codebase, `price` is ALREADY the discounted price (the
+     * merchant sets price=current/sale price and old_price=original price).
+     * The `discount_percentage` field is informational — it stores the
+     * percentage delta from old_price to price, NOT an additional discount
+     * to be re-applied on top of `price`.
+     *
+     * Earlier this accessor wrongly returned price - (price * discount / 100),
+     * which double-applied the discount and made the cart charge less than
+     * the actual selling price (e.g. 1350 instead of 1800 for a 25% off
+     * product originally priced at 2400).
+     *
+     * Returns $this->price so the cart totals match the displayed price.
+     */
     public function getDiscountedPriceAttribute()
     {
-        if ($this->is_on_offer && $this->discount_percentage) {
-            return $this->price - ($this->price * $this->discount_percentage / 100);
-        }
-        return $this->price;
+        return (float) $this->price;
     }
 
     public function getAverageRatingAttribute()

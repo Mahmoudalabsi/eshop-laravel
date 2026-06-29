@@ -14,10 +14,13 @@ class OrderItem extends Model
         'product_id',
         'product_name',
         'quantity',
+        'price',
         'unit_price',
         'total_price',
         'sku',
-        'attributes'
+        'size',
+        'color',
+        'attributes',
     ];
 
     protected $casts = [

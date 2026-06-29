@@ -85,6 +85,9 @@ class ProductService
             case 'name':
                 $query->orderBy('name', 'asc');
                 break;
+            case 'oldest':
+                $query->oldest();
+                break;
             case 'newest':
             default:
                 $query->latest();

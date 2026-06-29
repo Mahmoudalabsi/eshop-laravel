@@ -45,6 +45,7 @@ class OrderService
             'tax'             => $tax,
             'shipping_cost'   => $shipping,
             'total'           => $total,
+            'total_price'     => $total,
             'currency_code'   => $data['currency_code'] ?? 'SAR',
             'customer_name'   => $data['customer_name'],
             'customer_email'  => $data['customer_email'],

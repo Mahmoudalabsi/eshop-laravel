@@ -3,19 +3,50 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Product model (ecommerce-shop / admin backend)
+ *
+ * NOTE: Kept in sync with the storefront (ecommerce-eshop) Product model so both
+ * apps share the same $fillable set. Without this, the SetupController's
+ * updateOrCreate() calls would silently drop slug/is_featured/is_on_offer/etc.
+ * and the storefront would render products without slugs, badges, or discount info.
+ */
 class Product extends Model
 {
-    // 1. تحديث Fillable: استبدل category_id بـ subcategory_id
+    use SoftDeletes;
+
     protected $fillable = [
+        'subcategory_id',
         'name',
+        'slug',
         'description',
+        'short_description',
         'price',
         'old_price',
-        'subcategory_id', // الحقل الجديد
+        'cost_price',
         'image',
+        'status',
         'total_stock',
-        'status'
+        'sku',
+        'barcode',
+        'weight',
+        'dimensions',
+        'is_featured',
+        'is_on_offer',
+        'discount_percentage',
+        'offer_expires_at',
+    ];
+
+    protected $casts = [
+        'is_featured'      => 'boolean',
+        'is_on_offer'      => 'boolean',
+        'dimensions'       => 'array',
+        'offer_expires_at' => 'datetime',
+        'created_at'       => 'datetime',
+        'updated_at'       => 'datetime',
+        'deleted_at'       => 'datetime',
     ];
 
     public function subcategory()
@@ -55,14 +86,50 @@ class Product extends Model
     {
         return round($this->reviews()->avg('rating'), 1) ?: 0;
     }
-    // protected static function booted()
-    // {
-    //     static::addGlobalScope('activeCategory', function ($builder) {
-    //         $builder->whereHas('category', function ($query) {
-    //             $query->where('status', 1);
-    //         });
-    //     });
-    // }
-    // خاصية لتعرف إذا كان القسم نشطاً أم لا
 
+    // السعر بعد الخصم
+    /**
+     * The current selling price of the product.
+     *
+     * NOTE: In this codebase, `price` is ALREADY the discounted/sale price
+     * (the merchant sets price=current price and old_price=original price).
+     * The `discount_percentage` field is informational — it stores the
+     * percentage delta from old_price to price, NOT an additional discount
+     * to be re-applied on top of `price`.
+     *
+     * Earlier this accessor wrongly returned price - (price * discount / 100),
+     * which double-applied the discount. Returns $this->price for parity with
+     * the storefront (ecommerce-eshop) Product model.
+     */
+    public function getDiscountedPriceAttribute()
+    {
+        return (float) $this->price;
+    }
+
+    // Scopes
+    public function scopeActive($query)
+    {
+        return $query->where('status', 1);
+    }
+
+    public function scopeFeatured($query)
+    {
+        return $query->where('is_featured', true);
+    }
+
+    public function scopeOnOffer($query)
+    {
+        return $query->where('is_on_offer', true);
+    }
+
+    public function scopeInStock($query)
+    {
+        return $query->where('total_stock', '>', 0);
+    }
+
+    public function scopeSearchByName($query, $search)
+    {
+        return $query->where('name', 'like', "%{$search}%")
+            ->orWhere('description', 'like', "%{$search}%");
+    }
 }

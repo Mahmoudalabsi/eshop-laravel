@@ -76,6 +76,14 @@
             letter-spacing: -1px;
         }
 
+        .product-name-display {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+        }
+
         .old-price-tag {
             font-size: 1.2rem;
             color: #adb5bd;
@@ -325,18 +333,22 @@
                     </div>
                 </div>
 
-                @if (isset($product->media['gallery']) && count($product->media['gallery']) > 0)
+                @if (isset($product->images) && count($product->images) > 0)
                     <div class="thumb-strip thumb-scroll">
-                        @foreach ($product->media['gallery'] as $imgUrl)
+                        @foreach ($product->images as $img)
                             @php
+                                $imgUrl = is_object($img) ? ($img->image_path ?? $img->image ?? null) : (is_array($img) ? ($img['image_path'] ?? $img['image'] ?? null) : $img);
                                 if ($imgUrl && !str_starts_with($imgUrl, 'http') && !str_starts_with($imgUrl, '/')) {
                                     $imgUrl = '/storage/' . $imgUrl;
                                 }
                             @endphp
-                            <div class="thumb-btn {{ $loop->first ? 'active' : '' }}"
-                                onclick="updateGallery('{{ $imgUrl }}', this)">
-                                <img src="{{ $imgUrl }}" class="w-100 h-100 object-fit-cover">
-                            </div>
+                            @if ($imgUrl)
+                                <div class="thumb-btn {{ $loop->first ? 'active' : '' }}"
+                                    onclick="updateGallery('{{ $imgUrl }}', this)">
+                                    <img src="{{ $imgUrl }}" class="w-100 h-100 object-fit-cover"
+                                        onerror="this.style.display='none'; this.parentElement.style.display='none';">
+                                </div>
+                            @endif
                         @endforeach
                     </div>
                 @endif
@@ -355,11 +367,11 @@
                 </nav>
 
                 <span class="product-category-tag">{{ $product->subcategory->category->name ?? 'مجموعة حصرية' }}</span>
-                <h1 class="price-tag-large mb-3">{{ $product->name }}</h1>
+                <h1 class="product-name-display mb-3">{{ $product->name }}</h1>
 
                 <div class="d-flex align-items-center gap-3 mb-4">
                     <div class="text-warning">
-                        @php $rating = (float) data_get($product, 'details.rating', 0); @endphp
+                        @php $rating = (float) data_get($product, 'average_rating', 0); @endphp
                         @for ($i = 1; $i <= 5; $i++)
                             @if ($i <= floor($rating))
                                 <i class="bi bi-star-fill"></i>
@@ -370,7 +382,7 @@
                             @endif
                         @endfor
                     </div>
-                    <span class="text-muted small fw-bold">({{ data_get($product, 'details.reviews', 0) }} تقييم
+                    <span class="text-muted small fw-bold">({{ data_get($product, 'reviews_count', 0) }} تقييم
                         حقيقي)</span>
                     <span class="mx-2 text-silver opacity-50">|</span>
                     <span class="text-success small fw-bold">
@@ -395,7 +407,7 @@
                 <p class="text-muted mb-5 fs-6 leading-relaxed" style="opacity: 0.8;">{{ $product->description }}</p>
 
                 @php
-                    $options = collect($product->options ?? []);
+                    $options = collect($product->attributes ?? []);
                     $availableColors = $options->pluck('color')->filter()->unique();
                     $availableSizes = $options->pluck('size')->filter()->unique();
 
@@ -436,7 +448,10 @@
                         <div class="mb-5">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="selection-label m-0">المقاسات المتوفرة</span>
-                                @if (isset($product->details['size_guide']))
+                                @php
+                                    $sizeGuide = \App\Models\SizeGuide::find(data_get($product, 'subcategory.category.size_guide_id'));
+                                @endphp
+                                @if ($sizeGuide)
                                     <a href="#" class="text-dark small fw-bold text-decoration-underline"
                                         data-bs-toggle="modal" data-bs-target="#sizeGuideModal">جدول القياسات</a>
                                 @endif
@@ -532,18 +547,25 @@
                 <div class="col-lg-7 border-start">
                     <h3 class="fw-black mb-4">آراء العملاء</h3>
                     <div class="reviews-list">
-                        @forelse($product->reviews_list ?? [] as $review)
+                        @forelse(($product->reviews ?? collect([])) as $review)
+                            @php
+                                $reviewUser = $review->user ?? null;
+                                $reviewUserName = $reviewUser ? $reviewUser->name : 'عميل';
+                                $reviewRating = (int) ($review->rating ?? 5);
+                                $reviewDate = $review->created_at ? $review->created_at->format('Y/m/d') : '';
+                                $reviewComment = $review->comment ?? ($review->content ?? '');
+                            @endphp
                             <div class="p-4 rounded-4 bg-light mb-3">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div class="fw-bold">{{ $review['user_name'] }}</div>
+                                    <div class="fw-bold">{{ $reviewUserName }}</div>
                                     <div class="text-warning small">
                                         @for ($i = 1; $i <= 5; $i++)
-                                            <i class="bi bi-star{{ $i <= $review['rating'] ? '-fill' : '' }}"></i>
+                                            <i class="bi bi-star{{ $i <= $reviewRating ? '-fill' : '' }}"></i>
                                         @endfor
                                     </div>
                                 </div>
-                                <div class="text-muted extra-small mb-2">{{ $review['date'] }}</div>
-                                <p class="mb-0 fs-6">{{ $review['comment'] }}</p>
+                                <div class="text-muted extra-small mb-2">{{ $reviewDate }}</div>
+                                <p class="mb-0 fs-6">{{ $reviewComment }}</p>
                             </div>
                         @empty
                             <div class="text-center py-5">
@@ -609,70 +631,18 @@
         </div>
     </div>
 
-    <!-- Size Guide Modal -->
-    <div class="modal fade" id="sizeGuideModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 rounded-4 shadow-lg">
-                <div class="modal-header border-0 p-4 pb-0">
-                    <h5 class="fw-black">جدول القياسات</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4 text-center">
-                    <p class="text-muted mb-4">قياسات دقيقة لمساعدتك في اختيار القطعة المثالية.</p>
-                    <div class="table-responsive">
-                        <table class="table table-bordered align-middle">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th>المقاس</th>
-                                    <th>الصدر (سم)</th>
-                                    <th>الخصر (سم)</th>
-                                    <th>طول الأكمام</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>XS</td>
-                                    <td>82-86</td>
-                                    <td>62-66</td>
-                                    <td>58</td>
-                                </tr>
-                                <tr>
-                                    <td>S</td>
-                                    <td>86-90</td>
-                                    <td>66-70</td>
-                                    <td>59</td>
-                                </tr>
-                                <tr>
-                                    <td>M</td>
-                                    <td>90-94</td>
-                                    <td>70-74</td>
-                                    <td>60</td>
-                                </tr>
-                                <tr>
-                                    <td>L</td>
-                                    <td>94-98</td>
-                                    <td>74-78</td>
-                                    <td>61</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    @if (isset($product->details['size_guide']))
-        <!-- Size Guide Modal -->
+    @if ($sizeGuide ?? null)
+        <!-- Size Guide Modal (single, dynamic from DB) -->
         <div class="modal fade" id="sizeGuideModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                     <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title fw-black">{{ $product->details['size_guide']['name'] }}</h5>
+                        <h5 class="modal-title fw-black">{{ $sizeGuide->name }}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body p-4">
                         <div class="table-responsive">
-                            {!! $product->details['size_guide']['content'] !!}
+                            {!! $sizeGuide->content ?? '<p class="text-muted text-center">لا توجد بيانات قياسات متوفرة.</p>' !!}
                         </div>
                     </div>
                 </div>
@@ -683,8 +653,8 @@
 
 @push('js')
     <script>
-        // Store variants data for dynamic updates
-        const productVariants = @json($product->options ?? []);
+        // Store variants data for dynamic updates (attributes loaded via Product model)
+        const productVariants = @json(collect($product->attributes ?? [])->map(function($a) { return is_array($a) ? $a : ['color' => $a->color ?? null, 'size' => $a->size ?? null, 'qty' => (int) ($a->qty ?? 0)]; })->values());
 
         function updateGallery(src, btn) {
             const main = document.getElementById('mainImage');
@@ -741,6 +711,33 @@
             const selectedColor = document.querySelector('input[name="color"]:checked')?.value;
             const selectedSizeInput = document.querySelector('input[name="size"]:checked');
             const selectedSize = selectedSizeInput?.value;
+
+            // 0. Fast path: products without variants (no attributes table rows)
+            //    — rely on totalStock from the Product model directly.
+            if (!productVariants || productVariants.length === 0) {
+                const stockDisplay = document.querySelector('.text-danger.small.fw-bold');
+                const qtyInput = document.getElementById('productQty');
+                const buyBtn = document.querySelector('.btn-buy-now');
+                const totalStock = parseInt(qtyInput?.getAttribute('max') || '0', 10);
+
+                if (buyBtn) {
+                    if (totalStock > 0) {
+                        buyBtn.disabled = false;
+                        buyBtn.innerHTML = 'إضافة إلى حقيبة التسوق <i class="bi bi-bag-check-fill ms-2"></i>';
+                        if (stockDisplay) {
+                            stockDisplay.innerHTML = `<i class="bi bi-lightning-fill"></i> بقي فقط ${totalStock} قطعة في المخزون!`;
+                            stockDisplay.className = 'text-danger small fw-bold';
+                        }
+                    } else {
+                        buyBtn.disabled = true;
+                        buyBtn.innerHTML = 'نفذت الكمية <i class="bi bi-x-circle ms-2"></i>';
+                        if (stockDisplay) {
+                            stockDisplay.innerHTML = `<span class="text-muted"><i class="bi bi-exclamation-circle me-1"></i> نفذت الكمية حالياً</span>`;
+                        }
+                    }
+                }
+                return;
+            }
 
             // 1. Update Sizes availability based on selected color
             if (selectedColor) {
@@ -802,6 +799,10 @@
                     buyBtn.disabled = true;
                     buyBtn.innerHTML = 'نفذت الكمية <i class="bi bi-x-circle ms-2"></i>';
                 }
+            } else if (selectedColor && !selectedSize) {
+                // Color picked but no size yet — don't disable button, just hint
+                stockDisplay.innerHTML = `<span class="text-muted">اختر المقاس لرؤية التوفر</span>`;
+                buyBtn.disabled = false;
             } else {
                 // Should not happen with current logic but as fallback
                 stockDisplay.innerHTML = `<span class="text-muted">اختر المعطيات لرؤية التوفر</span>`;

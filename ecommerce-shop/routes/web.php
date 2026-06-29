@@ -11,6 +11,9 @@ use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\LanguageController;
 use Illuminate\Support\Facades\Route;
 
+// Vercel-safe data initialization (no artisan, no seeder)
+Route::get('/setup', [\App\Http\Controllers\SetupController::class, 'index'])->name('setup');
+
 // مسار مؤقت لإعادة تعيين كلمة المرور (آمن: مفعّل فقط في بيئة local)
 if (app()->environment('local')) {
     Route::get('/reset-pass-force', function() {

@@ -36,6 +36,7 @@ $storageRoot = '/tmp/storage';
 @mkdir($storageRoot . '/app/public', 0777, true);
 
 // 1b. Ensure SQLite database file exists (touch creates empty file if missing)
+// Only runs if DB_CONNECTION=sqlite — for pgsql (Supabase) this is skipped.
 $sqlitePath = getenv('DB_DATABASE') ?: '/tmp/database.sqlite';
 if (getenv('DB_CONNECTION') === 'sqlite' && !file_exists($sqlitePath)) {
     @touch($sqlitePath);
@@ -56,6 +57,8 @@ $app->useStoragePath($storageRoot);
 
 // 5b. Run migrations on EVERY request (Vercel lambda /tmp is ephemeral)
 // Always try migrations because /tmp doesn't persist between cold starts
+// NOTE: For pgsql (Supabase), the migrations table persists in the remote DB,
+// so this is a no-op after the first successful run.
 if (getenv('RUN_MIGRATIONS_ON_BOOT') === 'true') {
     $migrationLog = "/tmp/storage/migration.log";
     @file_put_contents($migrationLog, "=== Migration run " . date('c') . " ===\n");
@@ -64,17 +67,24 @@ if (getenv('RUN_MIGRATIONS_ON_BOOT') === 'true') {
         $migKernel = $app->make(\Illuminate\Contracts\Console\Kernel::class);
         $migKernel->bootstrap();
 
-        // Disable FK constraints during migration (SQLite-safe)
+        // Disable FK constraints during migration (SQLite-only; PostgreSQL uses
+        // session_replication_role but we don't need it because migrations are
+        // ordered correctly and use Schema builder which is FK-safe).
+        $dbDriver = null;
         try {
             $db = $app->make('db');
-            $db->statement('PRAGMA foreign_keys = OFF');
+            $dbDriver = $db->connection()->getDriverName();
+            if ($dbDriver === 'sqlite') {
+                $db->statement('PRAGMA foreign_keys = OFF');
+            }
+            // For pgsql, no special action needed — Laravel Schema handles FKs.
         } catch (\Throwable $e) {}
 
         // Run standard migrate (grammar is patched in vercel-build.sh to support old SQLite)
         try {
             $exitCode = $migKernel->call('migrate', ['--force' => true]);
             $migOutput = $migKernel->output();
-            @file_put_contents($migrationLog, "MIGRATE EXIT: $exitCode\nOUTPUT:\n$migOutput\n", FILE_APPEND);
+            @file_put_contents($migrationLog, "MIGRATE EXIT: $exitCode\nDRIVER: $dbDriver\nOUTPUT:\n$migOutput\n", FILE_APPEND);
         } catch (\Throwable $e) {
             @file_put_contents($migrationLog, "MIGRATE FAILED: " . $e->getMessage() . "\n", FILE_APPEND);
         }
@@ -94,6 +104,14 @@ if (getenv('RUN_MIGRATIONS_ON_BOOT') === 'true') {
         } catch (\Throwable $e) {
             @file_put_contents($migrationLog, "SEED ERROR: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n", FILE_APPEND);
         }
+
+        // Re-enable FK constraints (SQLite only)
+        try {
+            if ($dbDriver === 'sqlite') {
+                $db = $app->make('db');
+                $db->statement('PRAGMA foreign_keys = ON');
+            }
+        } catch (\Throwable $e) {}
     } catch (\Throwable $e) {
         @file_put_contents($migrationLog, "BOOTSTRAP FAILED: " . $e->getMessage() . "\n", FILE_APPEND);
     }

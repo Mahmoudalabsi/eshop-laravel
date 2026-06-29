@@ -121,7 +121,7 @@ class CartController extends Controller
     {
         $this->cartService->clear();
 
-        return redirect('cart')->with('success', __('messages.cart_cleared_success'));
+        return redirect()->route('cart.index')->with('success', __('messages.cart_cleared_success'));
     }
 
     public function getCartData()

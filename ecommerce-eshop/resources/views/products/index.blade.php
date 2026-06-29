@@ -29,15 +29,15 @@
                         <li><a class="dropdown-item py-2"
                                 href="{{ request()->fullUrlWithQuery(['sort' => 'oldest']) }}">الأقدم</a></li>
                         <li><a class="dropdown-item py-2"
-                                href="{{ request()->fullUrlWithQuery(['sort' => 'price_low']) }}">{{ __('messages.price_low') }}</a>
+                                href="{{ request()->fullUrlWithQuery(['sort' => 'price_asc']) }}">{{ __('messages.price_low') }}</a>
                         </li>
                         <li><a class="dropdown-item py-2"
-                                href="{{ request()->fullUrlWithQuery(['sort' => 'price_high']) }}">{{ __('messages.price_high') }}</a>
+                                href="{{ request()->fullUrlWithQuery(['sort' => 'price_desc']) }}">{{ __('messages.price_high') }}</a>
                         </li>
                         <li><a class="dropdown-item py-2"
-                                href="{{ request()->fullUrlWithQuery(['sort' => 'name_asc']) }}">الاسم (أ-ي)</a></li>
+                                href="{{ request()->fullUrlWithQuery(['sort' => 'name']) }}">الاسم (أ-ي)</a></li>
                         <li><a class="dropdown-item py-2"
-                                href="{{ request()->fullUrlWithQuery(['sort' => 'name_desc']) }}">الاسم (ي-أ)</a></li>
+                                href="{{ request()->fullUrlWithQuery(['sort' => 'top_rated']) }}">الأعلى تقييماً</a></li>
                     </ul>
                 </div>
             </div>

@@ -4,9 +4,25 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Category model (ecommerce-shop / admin backend)
+ *
+ * Kept in sync with the storefront so the SetupController can persist
+ * the category image and status fields without silent data loss.
+ */
 class Category extends Model
 {
-    protected $fillable = ['name', 'description', 'status', 'size_guide_id'];
+    protected $fillable = [
+        'name',
+        'description',
+        'image',
+        'status',
+        'size_guide_id',
+    ];
+
+    protected $casts = [
+        'status' => 'boolean',
+    ];
 
     public function sizeGuide()
     {
@@ -17,6 +33,7 @@ class Category extends Model
     {
         return $this->hasMany(Subcategory::class);
     }
+
     public function products()
     {
         // جلب المنتجات عبر جدول الأقسام الفرعية
@@ -28,5 +45,10 @@ class Category extends Model
             'id',             // المفتاح المحلي في جدول categories
             'id'              // المفتاح المحلي في جدول subcategories
         );
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 1);
     }
 }

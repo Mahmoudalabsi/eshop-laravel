@@ -1,5 +1,7 @@
 @extends('eshop.layouts.admin')
-@extends('assets.css.style')
+@push('css')
+    @include('assets.css.style')
+@endpush
 @section("title"," المنتجات والتقييمات ")
 
 @section('content')
@@ -84,9 +86,9 @@
                                     class="form-control border-success fw-bold shadow-sm" required>
                             </div>
                             <div class="col-md-6 mb-3" id="old_price_container">
-                                <label class="form-label fw-bold text-muted">السعر القديم (يظهر كخصم)</label>
+                                <label class="form-label fw-bold text-muted">السعر القديم (اتركه فارغاً لإلغاء الخصم)</label>
                                 <input type="number" step="0.01" name="old_price" id="p_old_price"
-                                    class="form-control shadow-sm bg-light" readonly>
+                                    class="form-control shadow-sm bg-light" placeholder="مثال: 2400">
                             </div>
                         </div>
                         <div class="row mb-4 p-3 bg-light rounded border">
@@ -153,9 +155,21 @@
 
                         <div id="size-container"></div>
 
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">وصف مختصر (اختياري - يظهر في بطاقة المنتج)</label>
+                            <textarea name="short_description" id="p_short_desc" class="form-control shadow-sm" rows="2" maxlength="150" placeholder="ملخص قصير يظهر في قوائم المنتجات..."></textarea>
+                        </div>
+
                         <div class="mb-0">
-                            <label class="form-label fw-bold">الوصف</label>
+                            <label class="form-label fw-bold">الوصف الكامل</label>
                             <textarea name="description" id="p_desc" class="form-control shadow-sm" rows="3"></textarea>
+                        </div>
+
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" name="is_featured" id="p_featured" value="1">
+                            <label class="form-check-label fw-bold" for="p_featured">
+                                <i class="bi bi-star-fill text-warning"></i> منتج مميز (يظهر في الصفحة الرئيسية)
+                            </label>
                         </div>
                     </div>
                     <div class="modal-footer bg-light">

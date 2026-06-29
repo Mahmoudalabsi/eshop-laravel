@@ -17,6 +17,8 @@
             totalInvoice: 'إجمالي الفاتورة:',
             pending: 'قيد الانتظار',
             processing: 'قيد التجهيز',
+            shipped: 'تم الشحن',
+            delivered: 'تم التسليم',
             completed: 'مكتمل',
             cancelled: 'ملغى',
             view: 'عرض',
@@ -41,6 +43,8 @@
             totalInvoice: 'Total Invoice:',
             pending: 'Pending',
             processing: 'Processing',
+            shipped: 'Shipped',
+            delivered: 'Delivered',
             completed: 'Completed',
             cancelled: 'Cancelled',
             view: 'View',
@@ -125,7 +129,7 @@
                 <tr>
                     <td class="fw-bold">#${order.id}</td>
                     <td>${order.user ? order.user.name : '<span class="text-muted">' + t.unknownCustomer + '</span>'}</td>
-                    <td class="text-success fw-bold">${parseFloat(order.total_price).toFixed(2)} ${currentLang === 'ar' ? 'ر.س' : 'SAR'}</td>
+                    <td class="text-success fw-bold">${parseFloat(order.total_price || order.total || 0).toFixed(2)} ${currentLang === 'ar' ? 'ر.س' : 'SAR'}</td>
                     <td><span class="badge ${statusBadge.class} rounded-pill px-3">${statusBadge.text}</span></td>
                     <td class="small text-muted">${date}</td>
                     <td>
@@ -137,6 +141,8 @@
                             <select class="form-select form-select-sm w-auto shadow-sm" onchange="changeStatus(${order.id}, this.value)">
                                 <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>${t.pending}</option>
                                 <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>${t.processing}</option>
+                                <option value="shipped" ${order.status === 'shipped' ? 'selected' : ''}>${t.shipped || 'تم الشحن'}</option>
+                                <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>${t.delivered || 'تم التسليم'}</option>
                                 <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>${t.completed}</option>
                                 <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>${t.cancelled}</option>
                             </select>
@@ -190,7 +196,7 @@
 
         if (order.items && order.items.length > 0) {
             order.items.forEach(item => {
-                const price = parseFloat(item.price);
+                const price = parseFloat(item.price || item.unit_price || 0);
                 const total = price * item.quantity;
                 const currency = currentLang === 'ar' ? 'ر.س' : 'SAR';
                 itemsHtml += `
@@ -214,7 +220,7 @@
                 <tfoot class="table-light">
                     <tr class="table-primary fw-bold">
                         <td colspan="4" class="text-end fs-5">${t.totalInvoice}</td>
-                        <td class="fs-5 text-primary">${parseFloat(order.total_price).toFixed(2)} ${currentLang === 'ar' ? 'ر.س' : 'SAR'}</td>
+                        <td class="fs-5 text-primary">${parseFloat(order.total_price || order.total || 0).toFixed(2)} ${currentLang === 'ar' ? 'ر.س' : 'SAR'}</td>
                     </tr>
                 </tfoot>
             </table>
@@ -277,6 +283,14 @@
             'processing': {
                 text: t.processing,
                 class: 'bg-info text-white'
+            },
+            'shipped': {
+                text: t.shipped,
+                class: 'bg-primary text-white'
+            },
+            'delivered': {
+                text: t.delivered,
+                class: 'bg-success text-white'
             },
             'completed': {
                 text: t.completed,

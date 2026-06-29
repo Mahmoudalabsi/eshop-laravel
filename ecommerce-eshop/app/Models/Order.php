@@ -19,6 +19,7 @@ class Order extends Model
         'tax',
         'shipping_cost',
         'total',
+        'total_price',
         'currency_code',
         'customer_name',
         'customer_email',
@@ -31,6 +32,21 @@ class Order extends Model
         'shipped_at',
         'delivered_at'
     ];
+
+    /**
+     * Accessor: total_price fallback to total.
+     *
+     * Many legacy / admin views read $order->total_price, but the storefront
+     * OrderService only writes to `total`. Without this accessor, those views
+     * would see NULL and render "0.00" or "NaN" for the order grand total.
+     * Returning $this->total keeps both code paths consistent.
+     */
+    public function getTotalPriceAttribute($value)
+    {
+        return $value !== null && $value !== 0.0
+            ? $value
+            : ($this->total ?? 0);
+    }
 
     protected $casts = [
         'shipping_address' => 'array',

@@ -101,6 +101,29 @@
         </div>
     </section>
 
+    @if (!empty($offers) && count($offers) > 0)
+    <section class="py-5 offers-home-section">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-end mb-5" data-aos="fade-up">
+                <div>
+                    <span class="badge bg-gold text-dark mb-2 px-3 py-2 rounded-pill fw-bold">عروض حصرية</span>
+                    <h2 class="display-5 fw-bold mb-0">آخر العروض المميزة</h2>
+                </div>
+                <a href="{{ route('offers.index') }}" class="btn btn-link text-decoration-none text-dark fw-bold">
+                    عرض الكل <i class="bi bi-arrow-left small ms-1"></i>
+                </a>
+            </div>
+            <div class="row g-4">
+                @foreach ($offers as $p)
+                    <div class="col-6 col-md-3" data-aos="fade-up" data-aos-delay="100">
+                        <x-product-card :product="$p" />
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
     <section class="py-5 mt-5">
         <div class="container">
             <div class="row g-4">

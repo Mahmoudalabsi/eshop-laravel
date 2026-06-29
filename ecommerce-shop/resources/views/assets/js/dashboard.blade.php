@@ -108,7 +108,7 @@
                     <tr>
                         <td class="fw-bold">#${order.id}</td>
                         <td>${order.user ? order.user.name : 'عميل مجهول'}</td>
-                        <td class="fw-bold text-success">${parseFloat(order.total_price).toFixed(2)} ر.س</td>
+                        <td class="fw-bold text-success">${parseFloat(order.total_price || order.total || 0).toFixed(2)} ر.س</td>
                         <td><span class="badge ${status.class}">${status.text}</span></td>
                         <td class="small text-muted">${orderDate}</td>
                     </tr>`;

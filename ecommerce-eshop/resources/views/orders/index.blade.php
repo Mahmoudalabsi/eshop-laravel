@@ -47,6 +47,18 @@
             border: 1px solid #b7eb8f;
         }
 
+        .status-shipped {
+            background: #e6f7ff;
+            color: #096dd9;
+            border: 1px solid #91d5ff;
+        }
+
+        .status-delivered {
+            background: #f6ffed;
+            color: #389e0d;
+            border: 1px solid #b7eb8f;
+        }
+
         .status-cancelled {
             background: #fff1f0;
             color: #cf1322;
@@ -119,7 +131,7 @@
                             <div class="small text-muted mb-1 text-uppercase fw-bold"
                                 style="font-size: 0.65rem; letter-spacing: 1px;">إجمالي المبلغ</div>
                             <div class="fw-black text-gold">
-                                {{ number_format(data_get($order, 'total_price', 0) * session('currency_rate', 1), 2) }}
+                                {{ number_format((data_get($order, 'total_price') ?: data_get($order, 'total', 0)) * session('currency_rate', 1), 2) }}
                                 <small>{{ session('currency_symbol', 'SAR') }}</small>
                             </div>
                         </div>

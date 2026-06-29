@@ -216,7 +216,8 @@
             }
 
             productsList.forEach(p => {
-                const isCategoryDisabled = p.category && p.category.status == 0;
+                const categoryFromSub = p.subcategory && p.subcategory.category ? p.subcategory.category : null;
+                const isCategoryDisabled = (p.category && p.category.status == 0) || (categoryFromSub && categoryFromSub.status == 0);
                 const isProductDisabled = p.status == 0;
                 const img = getImageUrl(p.image);
                 const avgRating = p.reviews_avg_rating ? parseFloat(p.reviews_avg_rating).toFixed(1) : '0.0';
@@ -238,8 +239,8 @@
                         <td><img src="${img}" width="45" height="45" class="rounded shadow-sm" style="object-fit: cover;"></td>
                         <td class="fw-bold">${p.name} ${isCategoryDisabled ? '<br><span class="badge bg-danger" style="font-size:0.7rem">Category disabled</span>' : ''}</td>
                         <td><span class="badge ${getStockClass(p.total_stock)}">${p.total_stock} units</span></td>
-                        <td><div class="text-warning fw-bold" onclick="showReviews(${p.id}, '${p.name}')" style="cursor:pointer"><i class="bi bi-star-fill"></i> ${avgRating}</div></td>
-                        <td><span class="badge bg-info-subtle text-info border border-info">${p.subcategory ? p.subcategory.name : 'General'}</span></td>
+                        <td><div class="text-warning fw-bold" onclick="showReviews(${p.id}, '${p.name.replace(/'/g, "\\'")}')" style="cursor:pointer"><i class="bi bi-star-fill"></i> ${avgRating}</div></td>
+                        <td><span class="badge bg-info-subtle text-info border border-info">${p.subcategory ? (categoryFromSub ? categoryFromSub.name + ' → ' : '') + p.subcategory.name : 'General'}</span></td>
                         <td>${statusBtn}</td>
                         <td>${priceHtml}</td>
                         <td>
@@ -319,6 +320,11 @@
                 header.className = 'modal-header bg-primary text-white'; // رأس أزرق
 
                 document.getElementById('edit_gallery_section').style.display = 'none';
+                // Reset all fields for add mode
+                const shortDescEl = document.getElementById('p_short_desc');
+                if (shortDescEl) shortDescEl.value = '';
+                const featuredEl = document.getElementById('p_featured');
+                if (featuredEl) featuredEl.checked = false;
                 addSizeField();
             } else {
                 // Format edit mode (orange/yellow)
@@ -348,6 +354,15 @@
 
             const subSelect = document.getElementById('prod_subcategory');
             if (subSelect) subSelect.value = product.subcategory_id;
+
+            const descEl = document.getElementById('p_desc');
+            if (descEl) descEl.value = product.description || '';
+
+            const shortDescEl = document.getElementById('p_short_desc');
+            if (shortDescEl) shortDescEl.value = product.short_description || '';
+
+            const featuredEl = document.getElementById('p_featured');
+            if (featuredEl) featuredEl.checked = !!product.is_featured;
 
             const currentImg = document.getElementById('current_main_img');
             if (currentImg) currentImg.src = getImageUrl(product.image);

@@ -42,6 +42,7 @@ $storageRoot = '/tmp/storage';
 @mkdir($storageRoot . '/app/public', 0777, true);
 
 // 1b. Ensure SQLite database file exists (touch creates empty file if missing)
+// Only runs if DB_CONNECTION=sqlite — for pgsql (Supabase) this is skipped.
 $sqlitePath = getenv('DB_DATABASE') ?: '/tmp/database.sqlite';
 if (getenv('DB_CONNECTION') === 'sqlite' && !file_exists($sqlitePath)) {
     @touch($sqlitePath);
@@ -61,6 +62,9 @@ $app = require_once $basePath . '/bootstrap/app.php';
 $app->useStoragePath($storageRoot);
 
 // 6. Run migrations on first cold start (idempotent via marker file)
+// NOTE: For pgsql (Supabase), the migrations table persists in the remote DB,
+// so the marker file in /tmp is just a per-instance optimization to avoid
+// querying the migrations table on every request.
 if (getenv('RUN_MIGRATIONS_ON_BOOT') === 'true') {
     $markerFile = $storageRoot . '/migrations_complete.txt';
 
@@ -70,20 +74,42 @@ if (getenv('RUN_MIGRATIONS_ON_BOOT') === 'true') {
             $kernel = $app->make(\Illuminate\Contracts\Console\Kernel::class);
             $kernel->bootstrap();
 
+            // Disable FK constraints during migration (SQLite-only)
+            $dbDriver = null;
+            try {
+                $db = $app->make('db');
+                $dbDriver = $db->connection()->getDriverName();
+                if ($dbDriver === 'sqlite') {
+                    $db->statement('PRAGMA foreign_keys = OFF');
+                }
+                // For pgsql, no special action needed.
+            } catch (\Throwable $e) {}
+
             // Run migrations (force = no confirmation prompt)
             $exitCode = $kernel->call('migrate', ['--force' => true]);
 
-            // Run seeders only if users table is empty (idempotent)
+            // Run SetupController (Vercel-safe replacement for db:seed)
+            // Idempotent: only seeds when users table is empty
             try {
                 $db = $app->make('db');
                 $userCount = $db->table('users')->count();
                 if ($userCount === 0) {
-                    $kernel->call('db:seed', ['--force' => true]);
+                    $setup = $app->make(\App\Http\Controllers\SetupController::class);
+                    $seedLog = $setup->runSilent();
+                    error_log('Setup: ' . implode(' | ', $seedLog));
                 }
             } catch (\Throwable $e) {
                 // Seeding failed — not fatal, continue serving requests
-                error_log('Seed failed: ' . $e->getMessage());
+                error_log('Setup failed: ' . $e->getMessage());
             }
+
+            // Re-enable FK constraints (SQLite only)
+            try {
+                if ($dbDriver === 'sqlite') {
+                    $db = $app->make('db');
+                    $db->statement('PRAGMA foreign_keys = ON');
+                }
+            } catch (\Throwable $e) {}
 
             // Write marker file so we don't re-run on every cold start
             @file_put_contents(
@@ -91,6 +117,7 @@ if (getenv('RUN_MIGRATIONS_ON_BOOT') === 'true') {
                 json_encode([
                     'migrated_at' => date('c'),
                     'exit_code'   => $exitCode,
+                    'driver'      => $dbDriver,
                 ])
             );
         } catch (\Throwable $e) {

@@ -207,6 +207,16 @@
             <div class="admin-section-card">
                 <h5><i class="bi bi-clock-history me-2 text-gold"></i>أحدث الطلبات</h5>
                 @forelse ($recentOrders as $order)
+                    @php
+                        $statusClass = match($order->status) {
+                            'paid'       => 'badge-paid',
+                            'pending'    => 'badge-pending',
+                            'processing' => 'badge-processing',
+                            'delivered'  => 'badge-delivered',
+                            'completed'  => 'badge-completed',
+                            default      => 'badge-pending',
+                        };
+                    @endphp
                     <div class="admin-row-item">
                         <div>
                             <div class="fw-bold">{{ $order->customer_name }}</div>
@@ -214,7 +224,7 @@
                         </div>
                         <div class="text-end">
                             <div class="fw-bold">{{ number_format($order->total) }} ر.س</div>
-                            <span class="admin-badge badge-{{ $order->status }}">{{ $order->status }}</span>
+                            <span class="admin-badge {{ $statusClass }}">{{ $order->status }}</span>
                         </div>
                     </div>
                 @empty
@@ -228,9 +238,17 @@
             <div class="admin-section-card">
                 <h5><i class="bi bi-box-seam me-2 text-gold"></i>أحدث المنتجات</h5>
                 @forelse ($recentProducts as $product)
+                    @php
+                        $adminImg = $product->image;
+                        if ($adminImg && !str_starts_with($adminImg, 'http') && !str_starts_with($adminImg, '/')) {
+                            $adminImg = '/storage/' . $adminImg;
+                        }
+                        $adminImg = $adminImg ?: asset('assets/img/placeholder.svg');
+                    @endphp
                     <div class="admin-row-item">
                         <div class="d-flex align-items-center gap-2">
-                            <img src="{{ $product->image ?? asset('assets/img/placeholder.svg') }}" alt="" style="width:36px; height:36px; border-radius:8px; object-fit:cover;">
+                            <img src="{{ $adminImg }}" alt="" style="width:36px; height:36px; border-radius:8px; object-fit:cover;"
+                                onerror="this.src='{{ asset('assets/img/placeholder.svg') }}'">
                             <div>
                                 <div class="fw-bold text-truncate" style="max-width:200px;">{{ $product->name }}</div>
                                 <small class="text-muted">{{ data_get($product, 'subcategory.category.name', '—') }}</small>
@@ -255,9 +273,17 @@
                 <h5 class="text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>منتجات بمخزون منخفض</h5>
                 <div class="row g-2">
                     @foreach ($lowStockProducts as $p)
+                        @php
+                            $lowImg = $p->image;
+                            if ($lowImg && !str_starts_with($lowImg, 'http') && !str_starts_with($lowImg, '/')) {
+                                $lowImg = '/storage/' . $lowImg;
+                            }
+                            $lowImg = $lowImg ?: asset('assets/img/placeholder.svg');
+                        @endphp
                         <div class="col-md-4">
                             <div class="d-flex align-items-center gap-2 p-2 rounded-3" style="background:#fef2f2;">
-                                <img src="{{ $p->image ?? asset('assets/img/placeholder.svg') }}" style="width:32px; height:32px; border-radius:6px; object-fit:cover;" alt="">
+                                <img src="{{ $lowImg }}" style="width:32px; height:32px; border-radius:6px; object-fit:cover;"
+                                    onerror="this.src='{{ asset('assets/img/placeholder.svg') }}'" alt="">
                                 <div class="flex-grow-1">
                                     <div class="fw-bold small text-truncate">{{ $p->name }}</div>
                                     <small class="text-danger">باقٍ: {{ $p->total_stock }}</small>

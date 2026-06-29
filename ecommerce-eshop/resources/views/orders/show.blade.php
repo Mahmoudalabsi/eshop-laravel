@@ -128,7 +128,7 @@
                 </div>
                 <div class="col-md-5">
                     <div class="step-indicator">
-                        @php $statuses = ['pending', 'processing', 'shipped', 'completed']; @endphp
+                        @php $statuses = ['pending', 'processing', 'shipped', 'delivered', 'completed']; @endphp
                         @foreach ($statuses as $index => $s)
                             @php
                                 $isActive = false;
@@ -145,6 +145,8 @@
                                         <i class="bi bi-gear"></i>
                                     @elseif($s == 'shipped')
                                         <i class="bi bi-truck"></i>
+                                    @elseif($s == 'delivered')
+                                        <i class="bi bi-box-seam"></i>
                                     @elseif($s == 'completed')
                                         <i class="bi bi-check-lg"></i>
                                     @endif
@@ -210,26 +212,32 @@
                     <div class="mt-4 pt-4 border-top">
                         <div class="row justify-content-end">
                             <div class="col-md-5">
+                                @php
+                                    $orderSubtotal = $order->subtotal ?? ($order->total ? $order->total / 1.15 : 0);
+                                    $orderTax      = $order->tax ?? ($order->total ? $order->total - $orderSubtotal - ($order->shipping_cost ?? 0) : 0);
+                                    $orderShipping = $order->shipping_cost ?? 0;
+                                    $orderGrand    = $order->total ?? $order->total_price ?? 0;
+                                @endphp
                                 <div class="d-flex justify-content-between mb-2">
                                     <span class="text-muted">المجموع الجزئي</span>
                                     <span
-                                        class="fw-bold">{{ number_format($order->total_price * 0.85 * session('currency_rate', 1), 2) }}</span>
+                                        class="fw-bold">{{ number_format($orderSubtotal * session('currency_rate', 1), 2) }}</span>
                                 </div>
                                 <div class="d-flex justify-content-between mb-2">
                                     <span class="text-muted">الضريبة (15%)</span>
                                     <span
-                                        class="fw-bold">{{ number_format($order->total_price * 0.15 * session('currency_rate', 1), 2) }}</span>
+                                        class="fw-bold">{{ number_format($orderTax * session('currency_rate', 1), 2) }}</span>
                                 </div>
                                 <div class="d-flex justify-content-between mb-3 text-success">
                                     <span>رسوم الشحن</span>
-                                    <span class="fw-bold">مجاني</span>
+                                    <span class="fw-bold">{{ $orderShipping > 0 ? number_format($orderShipping * session('currency_rate', 1), 2) . ' ' . session('currency_symbol', 'SAR') : 'مجاني' }}</span>
                                 </div>
                                 <hr>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="fw-black fs-5">الإجمالي الكلي</span>
                                     <div class="text-end">
                                         <h4 class="fw-black mb-0 text-gold">
-                                            {{ number_format($order->total_price * session('currency_rate', 1), 2) }}</h4>
+                                            {{ number_format($orderGrand * session('currency_rate', 1), 2) }}</h4>
                                         <small class="fw-bold text-muted">{{ session('currency_symbol', 'SAR') }}</small>
                                     </div>
                                 </div>

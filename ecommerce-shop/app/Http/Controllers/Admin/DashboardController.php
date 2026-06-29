@@ -38,7 +38,7 @@ class DashboardController extends Controller
 
         // جلب آخر 5 طلبات فقط مع اسم المستخدم
         $latestOrders = Order::with('user:id,name')
-            ->select('id', 'user_id', 'status', 'total_price', 'created_at')
+            ->select('id', 'user_id', 'status', 'total_price', 'total', 'created_at')
             ->latest()
             ->take(5)
             ->get();

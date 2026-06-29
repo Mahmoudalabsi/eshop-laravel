@@ -59,15 +59,32 @@ class ProductController extends Controller
             // 3. رفع الصورة الرئيسية
             $mainImagePath = $request->file('image')->store('products', 'public');
 
-            // 4. إنشاء المنتج
+            // 3b. حساب نسبة الخصم إذا توفر السعر القديم
+            $oldPrice = $request->filled('old_price') ? (float) $request->old_price : null;
+            $discountPct = 0;
+            $isOnOffer = false;
+            if ($oldPrice && $oldPrice > (float) $request->price) {
+                $discountPct = (int) round((($oldPrice - (float) $request->price) / $oldPrice) * 100);
+                $isOnOffer = true;
+            }
+
+            // 4. إنشاء المنتج — تعيين كل الحقول المطلوبة حتى لا تكون NULL
+            $name = $request->name;
             $product = Product::create([
-                'name' => $request->name,
-                'description' => $request->description,
-                'price' => $request->price,
-                'old_price' => $request->old_price,
-                'subcategory_id' => $request->subcategory_id,
-                'image' => $mainImagePath,
-                'total_stock' => $totalStock,
+                'name'                 => $name,
+                'slug'                 => \Illuminate\Support\Str::slug($name . '-' . substr(md5($name . microtime()), 0, 6)),
+                'short_description'    => $request->filled('short_description') ? $request->short_description : mb_substr($request->description ?? $name, 0, 150),
+                'description'          => $request->description,
+                'price'                => $request->price,
+                'old_price'            => $oldPrice,
+                'sku'                  => strtoupper(substr(md5($name . microtime()), 0, 8)),
+                'subcategory_id'       => $request->subcategory_id,
+                'image'                => $mainImagePath,
+                'total_stock'          => $totalStock,
+                'status'               => 1,
+                'is_featured'          => $request->boolean('is_featured') ? 1 : 0,
+                'is_on_offer'          => $isOnOffer ? 1 : 0,
+                'discount_percentage'  => $discountPct,
             ]);
 
             // 5. حفظ الخيارات (اللون، المقاس، الكمية)
@@ -103,12 +120,28 @@ class ProductController extends Controller
         ]);
 
         return DB::transaction(function () use ($request, $product) {
-            $data = $request->only(['name', 'description', 'price', 'subcategory_id']);
+            $data = $request->only(['name', 'description', 'price', 'subcategory_id', 'short_description']);
 
-            // منطق السعر القديم
-            if ((float) $request->price != (float) $product->price) {
-                $data['old_price'] = $product->price;
+            // تحديث الـ slug إذا تغير الاسم
+            if ($request->name !== $product->name) {
+                $data['slug'] = \Illuminate\Support\Str::slug($request->name . '-' . substr(md5($request->name . microtime()), 0, 6));
             }
+
+            // منطق السعر القديم + نسبة الخصم
+            $oldPrice = $request->filled('old_price') ? (float) $request->old_price : null;
+            if ($oldPrice !== null) {
+                $data['old_price'] = $oldPrice;
+                if ($oldPrice > (float) $request->price) {
+                    $data['discount_percentage'] = (int) round((($oldPrice - (float) $request->price) / $oldPrice) * 100);
+                    $data['is_on_offer'] = 1;
+                } else {
+                    $data['discount_percentage'] = 0;
+                    $data['is_on_offer'] = 0;
+                }
+            }
+
+            // علم "مميز"
+            $data['is_featured'] = $request->boolean('is_featured') ? 1 : 0;
 
             // معالجة الصورة الرئيسية
             if ($request->hasFile('image')) {
