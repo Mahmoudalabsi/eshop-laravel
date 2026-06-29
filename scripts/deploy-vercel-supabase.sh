@@ -2,7 +2,7 @@
 # ============================================================
 # 🚀 نشر Elegance Fashion على Vercel + Supabase (مُهيّأ مسبقًا)
 # ============================================================
-# قاعدة بيانات Supabase مُنشأة وجاهزة! المشروع: elegance-db
+# قاعدة بيانات Supabase مُنشأة وجاهزة! المشروع: elegance-prod (ref: ofehrwapsjlfoersvxet)
 # هذا السكريبت ينشر المشروعين على Vercel فقط.
 # ============================================================
 set -e
@@ -26,8 +26,8 @@ ESHOP_REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ESHOP_FRONTEND_DIR="$ESHOP_REPO_DIR/ecommerce-eshop"
 ESHOP_BACKEND_DIR="$ESHOP_REPO_DIR/ecommerce-shop"
 
-# قيم Supabase المُنشأة مسبقًا
-SUPABASE_URL="postgresql://postgres.zbijpeugqualseambtuk:EleganceDb2026%21SecurePass@aws-0-eu-central-1.pooler.supabase.com:6543/postgres"
+# قيم Supabase المُنشأة مسبقًا (مشروع elegance-prod)
+SUPABASE_URL="postgresql://postgres.ofehrwapsjlfoersvxet:EleganceShop2026%21Secure@aws-1-eu-central-1.pooler.supabase.com:6543/postgres"
 FRONTEND_APP_KEY="base64:BOdLkv68u7lm8ZDC4QyuRUdB7q5qYtyBy/qc934NHrM="
 BACKEND_APP_KEY="base64:GpG7ZNM/+Kx7Tq+0KpDhDdw/CohOY9hHJXtwyg9UI04="
 
@@ -36,8 +36,8 @@ echo "============================================================"
 echo "  🚀 نشر Elegance Fashion على Vercel + Supabase"
 echo "============================================================"
 echo ""
-echo "  🗄️  قاعدة البيانات: elegance-db (Supabase)"
-echo "  📡  Connection: aws-0-eu-central-1.pooler.supabase.com:6543"
+echo "  🗄️  قاعدة البيانات: elegance-prod (Supabase)"
+echo "  📡  Connection: aws-1-eu-central-1.pooler.supabase.com:6543"
 echo ""
 
 # ============================================================
@@ -217,7 +217,7 @@ echo "============================================================"
 echo ""
 echo "  🛍️  المتجر:    $FRONTEND_URL"
 echo "  📡  الـ API:    $BACKEND_URL"
-echo "  🗄️  قاعدة البيانات: elegance-db (Supabase, eu-central-1)"
+echo "  🗄️  قاعدة البيانات: elegance-prod (Supabase, eu-central-1)"
 echo ""
 echo "  حساب الأدمن:"
 echo "    البريد:      admin@elegance.com"
@@ -226,6 +226,6 @@ echo ""
 echo "  روابط مفيدة:"
 echo "    - سجل المايغريشن: $FRONTEND_URL/_debug/migrate"
 echo "    - API المنتجات:    $BACKEND_URL/api/v1/products"
-echo "    - Supabase DB:    https://supabase.com/dashboard/project/zbijpeugqualseambtuk"
+echo "    - Supabase DB:    https://supabase.com/dashboard/project/ofehrwapsjlfoersvxet"
 echo ""
 echo "============================================================"
