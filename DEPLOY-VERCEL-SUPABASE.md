@@ -4,6 +4,43 @@
 
 ---
 
+## ⚡ الطريقة السريعة (سكريبت آلي)
+
+إذا كان عندك Node.js و Vercel CLI، استخدم السكريبت التالي الذي يقوم بكل شيء تلقائيًا:
+
+```bash
+# 1. تثبيت Vercel CLI (مرة واحدة فقط)
+npm install -g vercel
+
+# 2. تسجيل الدخول في Vercel (يفتح المتصفح)
+vercel login
+
+# 3. إنشاء قاعدة بيانات Supabase واحصل على Connection URL
+#    من: Supabase Dashboard → Project Settings → Database → Connection string → Transaction (Pooler)
+
+# 4. تشغيل سكريبت النشر
+git clone https://github.com/Mahmoudalabsi/eshop-laravel.git
+cd eshop-laravel
+bash scripts/deploy-vercel-supabase.sh
+```
+
+السكريبت سيطلب منك:
+- ✏️ رابط Supabase Connection URL
+- ✏️ اسم مشروع الواجهة (افتراضي: `elegance-store`)
+- ✏️ اسم مشروع الـ API (افتراضي: `elegance-api`)
+
+ثم يقوم تلقائيًا بـ:
+- ✅ توليد APP_KEY لكل مشروع
+- ✅ إنشاء مشروعين على Vercel
+- ✅ ضبط جميع متغيرات البيئة (20+ متغير لكل مشروع)
+- ✅ نشر المشروعين
+- ✅ تشغيل `/setup` لزرع البيانات التجريبية
+- ✅ طباعة الروابط النهائية + حساب الأدمن
+
+> 💡 **ملاحظة:** يجب إنشاء حساب Supabase يدويًا أولاً والحصول على Connection URL قبل تشغيل السكريبت.
+
+---
+
 ## 📋 ما ستحصل عليه
 
 | المشروع | الرابط (مثال) | الوصف |
