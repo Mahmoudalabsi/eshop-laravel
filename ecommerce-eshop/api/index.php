@@ -45,11 +45,21 @@ if (getenv('DB_CONNECTION') === 'sqlite' && !file_exists($sqlitePath)) {
 // 2. Ensure /tmp bootstrap cache exists
 @mkdir('/tmp/bootstrap/cache', 0777, true);
 
-// 2b. Override Laravel's bootstrap cache path to use /tmp (writable on Vercel).
-// Vercel's PHP runtime ships the project to /var/task/user/ which is READ-ONLY.
-// Laravel's PackageManifest needs bootstrap/cache to be writable. We override
-// the path to /tmp/bootstrap/cache via $app->bootstrapCachePath() after $app
-// is created (see step 4 below).
+// 2b. Redirect Laravel's bootstrap cache files to /tmp (writable on Vercel).
+// Vercel's PHP runtime ships /var/task/user/ as READ-ONLY. Laravel's
+// PackageManifest and ProviderRepository need to write to bootstrap/cache/.
+// We redirect via env vars that Laravel's normalizeCachePath() checks:
+//   APP_PACKAGES_CACHE, APP_SERVICES_CACHE, APP_CONFIG_CACHE,
+//   APP_ROUTES_CACHE, APP_EVENTS_CACHE
+foreach (['APP_PACKAGES_CACHE', 'APP_SERVICES_CACHE', 'APP_CONFIG_CACHE', 'APP_ROUTES_CACHE', 'APP_EVENTS_CACHE'] as $cacheEnv) {
+    $shortName = strtolower(str_replace('APP_', '', $cacheEnv));
+    $cacheFile = "/tmp/bootstrap/cache/{$shortName}.php";
+    if (! getenv($cacheEnv)) {
+        putenv("{$cacheEnv}={$cacheFile}");
+        $_ENV[$cacheEnv] = $cacheFile;
+        $_SERVER[$cacheEnv] = $cacheFile;
+    }
+}
 
 // 3. Load Composer autoloader
 require $basePath . '/vendor/autoload.php';
@@ -57,12 +67,6 @@ require $basePath . '/vendor/autoload.php';
 // 4. Boot Laravel application
 /** @var Application $app */
 $app = require_once $basePath . '/bootstrap/app.php';
-
-// 4b. Override Laravel's bootstrap cache path to /tmp (writable on Vercel).
-// This prevents the error: "The /var/task/user/bootstrap/cache directory must
-// be present and writable." Vercel's lambda runtime ships /var/task/user/ as
-// read-only, so we redirect the cache to /tmp which is writable.
-$app->bootstrapCachePath('/tmp/bootstrap/cache');
 
 // 5. Override storage path to /tmp (writable on serverless)
 $app->useStoragePath($storageRoot);
