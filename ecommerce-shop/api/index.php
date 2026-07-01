@@ -312,12 +312,23 @@ if (isset($_SERVER['REQUEST_URI']) && strtok($_SERVER['REQUEST_URI'], '?') === '
         $kernel->bootstrap();
         $out['bootstrap_status'] = 'OK';
         $out['has_been_bootstrapped_after'] = $app->hasBeenBootstrapped();
+        // Check config
+        try {
+            $config = $app->make('config');
+            $out['config_app_providers'] = $config->get('app.providers', '(not set)');
+            $out['config_database_default'] = $config->get('database.default', '(not set)');
+            $out['config_database_connections'] = array_keys($config->get('database.connections', []));
+            $out['config_db_connection'] = $config->get('database.connections.' . $config->get('database.default', 'pgsql') . '.driver', '(missing)');
+        } catch (\Throwable $e) {
+            $out['config_error'] = $e->getMessage();
+        }
         // Get bound services
         try {
             $bindings = $app->getBindings();
             $out['bindings_count'] = count($bindings);
             $out['has_db_binding'] = isset($bindings['db']);
             $out['has_db_connection'] = $app->bound('db');
+            $out['bindings_keys'] = array_keys($bindings);
             // Try to get the registered service provider classes
             try {
                 $loadedProviders = $app->getLoadedProviders();
@@ -328,6 +339,18 @@ if (isset($_SERVER['REQUEST_URI']) && strtok($_SERVER['REQUEST_URI'], '?') === '
             }
         } catch (\Throwable $e) {
             $out['bindings_error'] = $e->getMessage();
+        }
+        // Check if bootstrap/cache files exist
+        $out['bootstrap_cache_files'] = [];
+        $cacheDir = $basePath . '/bootstrap/cache';
+        if (is_dir($cacheDir)) {
+            foreach (scandir($cacheDir) as $f) {
+                if ($f === '.' || $f === '..') continue;
+                $path = $cacheDir . '/' . $f;
+                $out['bootstrap_cache_files'][$f] = is_file($path) ? filesize($path) : 'dir';
+            }
+        } else {
+            $out['bootstrap_cache_files'] = 'no cache dir at ' . $cacheDir;
         }
         // Now try make('db')
         try {
