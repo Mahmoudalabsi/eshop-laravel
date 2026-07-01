@@ -61,6 +61,42 @@ $app = require_once $basePath . '/bootstrap/app.php';
 // 5. Override storage path to /tmp (writable on serverless)
 $app->useStoragePath($storageRoot);
 
+// 5b. WORKAROUND: Manually register + boot all configured service providers.
+//
+// On Vercel PHP 8.3 runtime, the RegisterProviders bootstrapper is not
+// running reliably (likely because an earlier bootstrapper throws and is
+// caught silently, leaving $app->hasBeenBootstrapped=true but providers
+// never registered). This causes $app->make('db') to fail with
+// "Target class [db] does not exist".
+//
+// Fix: explicitly register all providers from config('app.providers')
+// and boot them. This is idempotent — if providers are already registered,
+// the register() call is a no-op.
+try {
+    if (! $app->bound('db')) {
+        $providers = $app->make('config')->get('app.providers', []);
+        foreach ($providers as $providerClass) {
+            if (! class_exists($providerClass)) {
+                continue;
+            }
+            // Check if already registered
+            $reflection = new \ReflectionProperty($app, 'loadedProviders');
+            $reflection->setAccessible(true);
+            $loaded = $reflection->getValue($app);
+            if (isset($loaded[$providerClass])) {
+                continue;
+            }
+            $app->register($providerClass);
+        }
+        // Boot any deferred providers
+        if (! $app->isBooted()) {
+            $app->boot();
+        }
+    }
+} catch (\Throwable $e) {
+    error_log('Manual provider registration failed: ' . $e->getMessage());
+}
+
 // 6. Run migrations on first cold start (idempotent via marker file)
 // NOTE: For pgsql (Supabase), the migrations table persists in the remote DB,
 // so the marker file in /tmp is just a per-instance optimization to avoid

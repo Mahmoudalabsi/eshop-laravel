@@ -55,7 +55,54 @@ $app = require_once $basePath . '/bootstrap/app.php';
 // 5. Override storage path to /tmp (writable on serverless)
 $app->useStoragePath($storageRoot);
 
-// 5b. Run migrations on EVERY request (Vercel lambda /tmp is ephemeral)
+// 5b. WORKAROUND: Manually register + boot all configured service providers.
+//
+// On Vercel PHP 8.3 runtime, the RegisterProviders bootstrapper is not
+// running reliably (likely because an earlier bootstrapper throws and is
+// caught silently, leaving $app->hasBeenBootstrapped=true but providers
+// never registered). This causes $app->make('db') to fail with
+// "Target class [db] does not exist".
+//
+// Fix: explicitly register all providers from config('app.providers')
+// and boot them. This is idempotent — if providers are already registered,
+// the register() call is a no-op.
+try {
+    if (! $app->bound('db')) {
+        // Need to load config first if not already loaded
+        if (! $app->bound('config')) {
+            // Manually load config files
+            $config = new \Illuminate\Config\Repository();
+            $configPath = $basePath . '/config';
+            if (is_dir($configPath)) {
+                foreach (glob($configPath . '/*.php') as $configFile) {
+                    $key = basename($configFile, '.php');
+                    $config->set($key, require $configFile);
+                }
+            }
+            $app->instance('config', $config);
+        }
+        $providers = $app->make('config')->get('app.providers', []);
+        foreach ($providers as $providerClass) {
+            if (! class_exists($providerClass)) {
+                continue;
+            }
+            $reflection = new \ReflectionProperty($app, 'loadedProviders');
+            $reflection->setAccessible(true);
+            $loaded = $reflection->getValue($app);
+            if (isset($loaded[$providerClass])) {
+                continue;
+            }
+            $app->register($providerClass);
+        }
+        if (! $app->isBooted()) {
+            $app->boot();
+        }
+    }
+} catch (\Throwable $e) {
+    error_log('Manual provider registration failed: ' . $e->getMessage());
+}
+
+// 5c. Run migrations on EVERY request (Vercel lambda /tmp is ephemeral)
 // Always try migrations because /tmp doesn't persist between cold starts
 // NOTE: For pgsql (Supabase), the migrations table persists in the remote DB,
 // so this is a no-op after the first successful run.
