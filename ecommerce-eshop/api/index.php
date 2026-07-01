@@ -70,16 +70,24 @@ try {
     if (! $app->bound('db')) {
         // Need to load config first if not already loaded
         if (! $app->bound('config')) {
-            // Manually load config files
+            // Create empty Repository and bind it FIRST so that config files
+            // can use the config() helper during loading (e.g. sanctum.php
+            // calls config('app.url') via Sanctum::currentApplicationUrlWithPort).
             $config = new \Illuminate\Config\Repository();
+            $app->instance('config', $config);
+            
+            // Now load config files
             $configPath = $basePath . '/config';
             if (is_dir($configPath)) {
                 foreach (glob($configPath . '/*.php') as $configFile) {
                     $key = basename($configFile, '.php');
-                    $config->set($key, require $configFile);
+                    try {
+                        $config->set($key, require $configFile);
+                    } catch (\Throwable $ce) {
+                        // Silently skip config files that fail to load
+                    }
                 }
             }
-            $app->instance('config', $config);
         }
         $providers = $app->make('config')->get('app.providers', []);
         foreach ($providers as $providerClass) {

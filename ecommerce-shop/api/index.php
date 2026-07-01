@@ -82,16 +82,28 @@ try {
     if (! $dbBound) {
         // Need to load config first if not already loaded
         if (! $configBound) {
+            // Create empty Repository and bind it FIRST so that config files
+            // can use the config() helper during loading (e.g. sanctum.php
+            // calls config('app.url') via Sanctum::currentApplicationUrlWithPort).
             $config = new \Illuminate\Config\Repository();
+            $app->instance('config', $config);
+            @file_put_contents($providerFixLog, "Bound empty config instance\n", FILE_APPEND);
+            
+            // Now load config files
             $configPath = $basePath . '/config';
             if (is_dir($configPath)) {
+                $loadedKeys = [];
                 foreach (glob($configPath . '/*.php') as $configFile) {
                     $key = basename($configFile, '.php');
-                    $config->set($key, require $configFile);
+                    try {
+                        $config->set($key, require $configFile);
+                        $loadedKeys[] = $key;
+                    } catch (\Throwable $ce) {
+                        @file_put_contents($providerFixLog, "Failed to load config/$key.php: " . $ce->getMessage() . "\n", FILE_APPEND);
+                    }
                 }
+                @file_put_contents($providerFixLog, "Loaded config keys: " . implode(',', $loadedKeys) . "\n", FILE_APPEND);
             }
-            $app->instance('config', $config);
-            @file_put_contents($providerFixLog, "Manually loaded config, keys: " . implode(',', array_keys($config->all())) . "\n", FILE_APPEND);
         }
         $providers = $app->make('config')->get('app.providers', []);
         @file_put_contents($providerFixLog, "Providers count: " . count($providers) . "\n", FILE_APPEND);
