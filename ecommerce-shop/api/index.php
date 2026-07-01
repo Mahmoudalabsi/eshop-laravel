@@ -72,29 +72,69 @@ $app->useStoragePath($storageRoot);
 // Fix: explicitly register all providers from config('app.providers')
 // and boot them. This is idempotent — if providers are already registered,
 // the register() call is a no-op.
+$providerFixLog = "/tmp/storage/provider_fix.log";
+@file_put_contents($providerFixLog, "=== Fix run " . date('c') . " ===\n");
 try {
-    if (! $app->bound('db')) {
+    $dbBound = $app->bound('db');
+    $configBound = $app->bound('config');
+    @file_put_contents($providerFixLog, "db_bound=" . ($dbBound ? 'true' : 'false') . " config_bound=" . ($configBound ? 'true' : 'false') . "\n", FILE_APPEND);
+    
+    if (! $dbBound) {
+        // Need to load config first if not already loaded
+        if (! $configBound) {
+            $config = new \Illuminate\Config\Repository();
+            $configPath = $basePath . '/config';
+            if (is_dir($configPath)) {
+                foreach (glob($configPath . '/*.php') as $configFile) {
+                    $key = basename($configFile, '.php');
+                    $config->set($key, require $configFile);
+                }
+            }
+            $app->instance('config', $config);
+            @file_put_contents($providerFixLog, "Manually loaded config, keys: " . implode(',', array_keys($config->all())) . "\n", FILE_APPEND);
+        }
         $providers = $app->make('config')->get('app.providers', []);
+        @file_put_contents($providerFixLog, "Providers count: " . count($providers) . "\n", FILE_APPEND);
+        
+        $registered = [];
+        $skipped = [];
         foreach ($providers as $providerClass) {
             if (! class_exists($providerClass)) {
+                $skipped[] = $providerClass . ' (class not found)';
                 continue;
             }
-            // Check if already registered
             $reflection = new \ReflectionProperty($app, 'loadedProviders');
             $reflection->setAccessible(true);
             $loaded = $reflection->getValue($app);
             if (isset($loaded[$providerClass])) {
+                $skipped[] = $providerClass . ' (already loaded)';
                 continue;
             }
-            $app->register($providerClass);
+            try {
+                $app->register($providerClass);
+                $registered[] = $providerClass;
+            } catch (\Throwable $re) {
+                $skipped[] = $providerClass . ' (register failed: ' . $re->getMessage() . ')';
+            }
         }
-        // Boot any deferred providers
+        @file_put_contents($providerFixLog, "Registered: " . count($registered) . " Skipped: " . count($skipped) . "\n", FILE_APPEND);
+        if (! empty($skipped)) {
+            @file_put_contents($providerFixLog, "Skipped details: " . implode(' | ', $skipped) . "\n", FILE_APPEND);
+        }
+        
         if (! $app->isBooted()) {
             $app->boot();
+            @file_put_contents($providerFixLog, "Booted: true\n", FILE_APPEND);
+        } else {
+            @file_put_contents($providerFixLog, "Already booted\n", FILE_APPEND);
         }
+        
+        @file_put_contents($providerFixLog, "db_bound_after=" . ($app->bound('db') ? 'true' : 'false') . "\n", FILE_APPEND);
+    } else {
+        @file_put_contents($providerFixLog, "db already bound, skipping\n", FILE_APPEND);
     }
 } catch (\Throwable $e) {
-    error_log('Manual provider registration failed: ' . $e->getMessage());
+    @file_put_contents($providerFixLog, "EXCEPTION: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n", FILE_APPEND);
 }
 
 // 6. Run migrations on first cold start (idempotent via marker file)
@@ -432,6 +472,18 @@ if (isset($_SERVER['REQUEST_URI']) && strtok($_SERVER['REQUEST_URI'], '?') === '
         }
     } else {
         $out['laravel_log'] = 'no log file at ' . $logPath;
+    }
+    // Read provider fix log
+    $fixLogPath = '/tmp/storage/provider_fix.log';
+    if (file_exists($fixLogPath)) {
+        $content = @file_get_contents($fixLogPath);
+        if ($content === false) {
+            $out['provider_fix_log'] = 'file exists but unreadable';
+        } else {
+            $out['provider_fix_log'] = substr($content, max(0, strlen($content) - 8000));
+        }
+    } else {
+        $out['provider_fix_log'] = 'no fix log at ' . $fixLogPath;
     }
     echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     exit;
