@@ -45,19 +45,11 @@ if (getenv('DB_CONNECTION') === 'sqlite' && !file_exists($sqlitePath)) {
 // 2. Ensure /tmp bootstrap cache exists
 @mkdir('/tmp/bootstrap/cache', 0777, true);
 
-// 2b. Ensure project bootstrap/cache directory exists at runtime.
-// Vercel's PHP runtime doesn't always ship the bootstrap/cache directory
-// (it may only contain .gitignore). Laravel's PackageManifest needs this
-// directory to be present and writable, otherwise it throws:
-//   "The /var/task/user/bootstrap/cache directory must be present and writable."
-$runtimeBootstrapCache = $basePath . '/bootstrap/cache';
-if (! is_dir($runtimeBootstrapCache)) {
-    @mkdir($runtimeBootstrapCache, 0777, true);
-}
-// Also ensure it's writable (Vercel lambda runs as non-root)
-if (is_dir($runtimeBootstrapCache) && ! is_writable($runtimeBootstrapCache)) {
-    @chmod($runtimeBootstrapCache, 0777);
-}
+// 2b. Override Laravel's bootstrap cache path to use /tmp (writable on Vercel).
+// Vercel's PHP runtime ships the project to /var/task/user/ which is READ-ONLY.
+// Laravel's PackageManifest needs bootstrap/cache to be writable. We override
+// the path to /tmp/bootstrap/cache via $app->bootstrapCachePath() after $app
+// is created (see step 4 below).
 
 // 3. Load Composer autoloader
 require $basePath . '/vendor/autoload.php';
@@ -65,6 +57,12 @@ require $basePath . '/vendor/autoload.php';
 // 4. Boot Laravel application
 /** @var Application $app */
 $app = require_once $basePath . '/bootstrap/app.php';
+
+// 4b. Override Laravel's bootstrap cache path to /tmp (writable on Vercel).
+// This prevents the error: "The /var/task/user/bootstrap/cache directory must
+// be present and writable." Vercel's lambda runtime ships /var/task/user/ as
+// read-only, so we redirect the cache to /tmp which is writable.
+$app->bootstrapCachePath('/tmp/bootstrap/cache');
 
 // 5. Override storage path to /tmp (writable on serverless)
 $app->useStoragePath($storageRoot);
