@@ -300,6 +300,64 @@ if (isset($_SERVER['REQUEST_URI']) && strtok($_SERVER['REQUEST_URI'], '?') === '
     exit;
 }
 
+// 7e. Bootstrap + log dump endpoint
+if (isset($_SERVER['REQUEST_URI']) && strtok($_SERVER['REQUEST_URI'], '?') === '/_debug/bootstrap') {
+    header('Content-Type: application/json');
+    $out = [
+        'php_version' => PHP_VERSION,
+        'has_been_bootstrapped_before' => $app->hasBeenBootstrapped(),
+    ];
+    // Try bootstrap
+    try {
+        $kernel->bootstrap();
+        $out['bootstrap_status'] = 'OK';
+        $out['has_been_bootstrapped_after'] = $app->hasBeenBootstrapped();
+        // Get bound services
+        try {
+            $bindings = $app->getBindings();
+            $out['bindings_count'] = count($bindings);
+            $out['has_db_binding'] = isset($bindings['db']);
+            $out['has_db_connection'] = $app->bound('db');
+            // Try to get the registered service provider classes
+            try {
+                $loadedProviders = $app->getLoadedProviders();
+                $out['loaded_providers_count'] = count($loadedProviders);
+                $out['loaded_providers'] = array_keys($loadedProviders);
+            } catch (\Throwable $e) {
+                $out['loaded_providers_error'] = $e->getMessage();
+            }
+        } catch (\Throwable $e) {
+            $out['bindings_error'] = $e->getMessage();
+        }
+        // Now try make('db')
+        try {
+            $db = $app->make('db');
+            $out['db_make_status'] = 'OK: ' . get_class($db);
+        } catch (\Throwable $e) {
+            $out['db_make_status'] = 'FAILED: ' . $e->getMessage();
+        }
+    } catch (\Throwable $e) {
+        $out['bootstrap_status'] = 'FAILED: ' . get_class($e) . ': ' . $e->getMessage();
+        $out['bootstrap_file'] = $e->getFile() . ':' . $e->getLine();
+        $out['bootstrap_trace'] = array_slice(explode("\n", $e->getTraceAsString()), 0, 10);
+    }
+    // Read Laravel log file
+    $logPath = '/tmp/storage/logs/laravel.log';
+    if (file_exists($logPath)) {
+        $content = @file_get_contents($logPath);
+        if ($content === false) {
+            $out['laravel_log'] = 'file exists but unreadable';
+        } else {
+            // Take last 8000 chars
+            $out['laravel_log_tail'] = substr($content, max(0, strlen($content) - 8000));
+        }
+    } else {
+        $out['laravel_log'] = 'no log file at ' . $logPath;
+    }
+    echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 $response = $kernel->handle(
     $request = Request::capture()
 );
