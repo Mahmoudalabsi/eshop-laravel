@@ -93,7 +93,7 @@ try {
         // Merge Laravel's default providers (normally done by LoadConfiguration bootstrapper)
         try {
             $defaultProviders = new \Illuminate\Support\DefaultProviders();
-            $providers = array_unique(array_merge($providers, $defaultProviders->all()));
+            $providers = array_unique(array_merge($providers, $defaultProviders->toArray()));
         } catch (\Throwable $de) {
             // Silently continue
         }
