@@ -358,6 +358,26 @@ if (isset($_SERVER['REQUEST_URI']) && strtok($_SERVER['REQUEST_URI'], '?') === '
             $out['db_make_status'] = 'OK: ' . get_class($db);
         } catch (\Throwable $e) {
             $out['db_make_status'] = 'FAILED: ' . $e->getMessage();
+            // Try manually registering the DatabaseServiceProvider
+            try {
+                $dbProvider = new \Illuminate\Database\DatabaseServiceProvider($app);
+                $dbProvider->register();
+                $dbProvider->boot();
+                $out['manual_register_status'] = 'OK';
+                $db = $app->make('db');
+                $out['db_make_after_manual_register'] = 'OK: ' . get_class($db);
+                // Try a query
+                try {
+                    $conn = $db->connection();
+                    $result = $conn->select('SELECT 1 AS test');
+                    $out['db_query_test'] = 'OK';
+                    $out['db_driver'] = $conn->getDriverName();
+                } catch (\Throwable $qe) {
+                    $out['db_query_test'] = 'FAILED: ' . $qe->getMessage();
+                }
+            } catch (\Throwable $re) {
+                $out['manual_register_status'] = 'FAILED: ' . $re->getMessage();
+            }
         }
     } catch (\Throwable $e) {
         $out['bootstrap_status'] = 'FAILED: ' . get_class($e) . ': ' . $e->getMessage();
