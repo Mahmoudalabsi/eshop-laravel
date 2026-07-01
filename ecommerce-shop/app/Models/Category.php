@@ -57,9 +57,4 @@ class Category extends Model
             'id'              // المفتاح المحلي في جدول subcategories
         );
     }
-
-    public function scopeActive($query)
-    {
-        return $query->where('status', 1);
-    }
 }
