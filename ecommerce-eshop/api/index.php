@@ -90,6 +90,15 @@ try {
             }
         }
         $providers = $app->make('config')->get('app.providers', []);
+        // Merge Laravel's default providers (normally done by LoadConfiguration bootstrapper)
+        try {
+            $defaultProviders = \Illuminate\Foundation\Application::defaultProviders();
+            if (method_exists($defaultProviders, 'all')) {
+                $providers = array_unique(array_merge($providers, $defaultProviders->all()));
+            }
+        } catch (\Throwable $de) {
+            // Silently continue
+        }
         foreach ($providers as $providerClass) {
             if (! class_exists($providerClass)) {
                 continue;

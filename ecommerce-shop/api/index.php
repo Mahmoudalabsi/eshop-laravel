@@ -106,7 +106,16 @@ try {
             }
         }
         $providers = $app->make('config')->get('app.providers', []);
-        @file_put_contents($providerFixLog, "Providers count: " . count($providers) . "\n", FILE_APPEND);
+        // Merge Laravel's default providers (normally done by LoadConfiguration bootstrapper)
+        try {
+            $defaultProviders = \Illuminate\Foundation\Application::defaultProviders();
+            if (method_exists($defaultProviders, 'all')) {
+                $providers = array_unique(array_merge($providers, $defaultProviders->all()));
+            }
+        } catch (\Throwable $de) {
+            @file_put_contents($providerFixLog, "defaultProviders() failed: " . $de->getMessage() . "\n", FILE_APPEND);
+        }
+        @file_put_contents($providerFixLog, "Providers count (with defaults): " . count($providers) . "\n", FILE_APPEND);
         
         $registered = [];
         $skipped = [];
