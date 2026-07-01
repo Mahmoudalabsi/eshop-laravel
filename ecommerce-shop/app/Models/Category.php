@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Category model (ecommerce-shop / admin backend)
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Category extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'name',
         'description',
@@ -23,6 +26,14 @@ class Category extends Model
     protected $casts = [
         'status' => 'boolean',
     ];
+
+    /**
+     * Scope: only active categories (status = true).
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', true);
+    }
 
     public function sizeGuide()
     {
