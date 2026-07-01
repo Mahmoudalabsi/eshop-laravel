@@ -51,6 +51,19 @@ if (getenv('DB_CONNECTION') === 'sqlite' && !file_exists($sqlitePath)) {
 // 2. Ensure /tmp bootstrap cache exists
 @mkdir('/tmp/bootstrap/cache', 0777, true);
 
+// 2b. Ensure project bootstrap/cache directory exists at runtime.
+// Vercel's PHP runtime doesn't always ship the bootstrap/cache directory
+// (it may only contain .gitignore). Laravel's PackageManifest needs this
+// directory to be present and writable, otherwise it throws:
+//   "The /var/task/user/bootstrap/cache directory must be present and writable."
+$runtimeBootstrapCache = $basePath . '/bootstrap/cache';
+if (! is_dir($runtimeBootstrapCache)) {
+    @mkdir($runtimeBootstrapCache, 0777, true);
+}
+if (is_dir($runtimeBootstrapCache) && ! is_writable($runtimeBootstrapCache)) {
+    @chmod($runtimeBootstrapCache, 0777);
+}
+
 // 3. Load Composer autoloader
 require $basePath . '/vendor/autoload.php';
 
