@@ -224,6 +224,82 @@ if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/_debug/p
     exit;
 }
 
+// 7d. Database connection test endpoint
+if (isset($_SERVER['REQUEST_URI']) && strtok($_SERVER['REQUEST_URI'], '?') === '/_debug/db') {
+    header('Content-Type: application/json');
+    $out = [
+        'env' => [
+            'DB_CONNECTION' => getenv('DB_CONNECTION'),
+            'DB_HOST' => getenv('DB_HOST'),
+            'DB_PORT' => getenv('DB_PORT'),
+            'DB_DATABASE' => getenv('DB_DATABASE'),
+            'DB_USERNAME' => getenv('DB_USERNAME'),
+            'DB_PASSWORD_set' => getenv('DB_PASSWORD') ? 'yes (' . strlen(getenv('DB_PASSWORD')) . ' chars)' : 'NO',
+            'DB_SSLMODE' => getenv('DB_SSLMODE'),
+            'APP_ENV' => getenv('APP_ENV'),
+            'APP_DEBUG' => getenv('APP_DEBUG'),
+        ],
+        'pdo_pgsql_loaded' => extension_loaded('pdo_pgsql'),
+        'pgsql_loaded' => extension_loaded('pgsql'),
+    ];
+
+    // Try connecting via raw pg_connect (uses pgsql extension, different network stack)
+    if (extension_loaded('pgsql')) {
+        $host = getenv('DB_HOST');
+        $port = getenv('DB_PORT') ?: '5432';
+        $db   = getenv('DB_DATABASE') ?: 'postgres';
+        $user = getenv('DB_USERNAME') ?: 'postgres';
+        $pass = getenv('DB_PASSWORD') ?: '';
+        $sslmode = getenv('DB_SSLMODE') ?: 'require';
+        $connStr = "host=$host port=$port dbname=$db user=$user password=$pass sslmode=$sslmode";
+        $out['pg_connect_connstr'] = $connStr;
+        try {
+            $pg = @pg_connect($connStr, PGSQL_CONNECT_FORCE_NEW);
+            if ($pg) {
+                $out['pg_connect_status'] = 'OK';
+                $r = pg_query($pg, "SELECT count(*) AS c FROM users;");
+                if ($r) {
+                    $row = pg_fetch_assoc($r);
+                    $out['pg_users_count'] = $row['c'];
+                }
+                pg_close($pg);
+            } else {
+                $out['pg_connect_status'] = 'FAILED: ' . pg_last_error();
+            }
+        } catch (\Throwable $e) {
+            $out['pg_connect_status'] = 'EXCEPTION: ' . $e->getMessage();
+        }
+    }
+
+    // Try connecting via Laravel/PDO
+    try {
+        $kernel->bootstrap();
+        $db = $app->make('db');
+        $conn = $db->connection();
+        $out['connection_name'] = $conn->getName();
+        $out['pdo_driver'] = $conn->getPdo()->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        $out['server_version'] = $conn->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION);
+        $result = $conn->select('SELECT 1 as test');
+        $out['query_result'] = $result;
+        try {
+            $tables = $conn->select("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename");
+            $out['tables'] = array_map(fn($t) => $t->tablename, $tables);
+            $out['tables_count'] = count($out['tables']);
+        } catch (\Throwable $e) {
+            $out['tables_error'] = $e->getMessage();
+        }
+        $out['status'] = 'OK';
+    } catch (\Throwable $e) {
+        $out['status'] = 'ERROR';
+        $out['error_class'] = get_class($e);
+        $out['error_message'] = $e->getMessage();
+        $out['error_file'] = $e->getFile() . ':' . $e->getLine();
+        $out['error_trace'] = array_slice(explode("\n", $e->getTraceAsString()), 0, 15);
+    }
+    echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 $response = $kernel->handle(
     $request = Request::capture()
 );

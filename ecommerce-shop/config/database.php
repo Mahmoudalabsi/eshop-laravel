@@ -85,7 +85,7 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => env('DB_URL'), // Supabase pooler URL: postgresql://postgres:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+            'url' => env('DB_URL'), // Supabase pooler URL: postgresql://postgres.[REF]:[PASSWORD]@aws-1-[REGION].pooler.supabase.com:6543/postgres
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'laravel'),
@@ -96,7 +96,10 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'require'),
-            'sslrootcert' => env('DB_SSLROOTCERT', '/etc/ssl/certs/ca-certificates.crt'),
+            // Only pass sslrootcert if explicitly set to a real file path.
+            // On Vercel serverless, the default CA path may not exist; libpq's
+            // sslmode=require should NOT need a root cert.
+            'sslrootcert' => file_exists((string) env('DB_SSLROOTCERT', '')) ? env('DB_SSLROOTCERT') : null,
             'options' => extension_loaded('pdo_pgsql') ? [
                 // Force SSL verification (Supabase requires sslmode=require)
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
